@@ -1,4 +1,5 @@
 import { Search, MapPin, DollarSign, Building2 } from 'lucide-react'
+import { Button, Card, Badge, Input } from '../components/ui'
 
 export default function ProgramsPage() {
   // Mock data for demonstration
@@ -46,10 +47,9 @@ export default function ProgramsPage() {
       <div className="mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
+          <Input 
             placeholder="Search programs..."
-            className="input pl-10"
+            className="pl-10"
           />
         </div>
       </div>
@@ -57,12 +57,12 @@ export default function ProgramsPage() {
       {/* Programs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {programs.map((program) => (
-          <div key={program.id} className="card hover:shadow-lg transition-shadow">
+          <Card key={program.id} hover>
             {/* Program Type Badge */}
             <div className="flex items-center justify-between mb-3">
-              <span className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-xs font-semibold">
+              <Badge variant="primary">
                 {program.type}
-              </span>
+              </Badge>
             </div>
 
             {/* Program Name */}
@@ -95,11 +95,11 @@ export default function ProgramsPage() {
 
             {/* CTA */}
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <button className="btn btn-primary w-full">
+              <Button className="w-full">
                 Check Eligibility
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
     </div>

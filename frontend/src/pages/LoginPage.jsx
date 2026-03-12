@@ -1,11 +1,35 @@
 import { Link } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { LogIn } from 'lucide-react'
+import { Button, Card } from '../components/ui'
+import FormInput from '../components/ui/FormInput'
+import { loginSchema } from '../lib/validations'
 
 export default function LoginPage() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(loginSchema),
+  })
+
+  const onSubmit = async (data) => {
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      console.log('Login data:', data)
+      // TODO: Implement actual login logic
+    } catch (error) {
+      console.error('Login failed:', error)
+    }
+  }
+
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
-        <div className="card">
+        <Card>
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <LogIn className="w-8 h-8 text-white" />
@@ -14,34 +38,29 @@ export default function LoginPage() {
             <p className="text-gray-600 mt-2">Sign in to your CivicAI account</p>
           </div>
 
-          <form className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <input
-                type="email"
-                id="email"
-                className="input"
-                placeholder="you@example.com"
-              />
-            </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <FormInput
+              {...register('email')}
+              type="email"
+              label="Email Address"
+              placeholder="you@example.com"
+              error={errors.email}
+              required
+            />
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                className="input"
-                placeholder="••••••••"
-              />
-            </div>
+            <FormInput
+              {...register('password')}
+              type="password"
+              label="Password"
+              placeholder="••••••••"
+              error={errors.password}
+              required
+            />
 
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <input
+                  {...register('remember')}
                   id="remember"
                   type="checkbox"
                   className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
@@ -55,9 +74,14 @@ export default function LoginPage() {
               </a>
             </div>
 
-            <button type="submit" className="btn btn-primary w-full">
-              Sign In
-            </button>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              loading={isSubmitting}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Signing In...' : 'Sign In'}
+            </Button>
           </form>
 
           <div className="mt-6 text-center">
@@ -68,7 +92,7 @@ export default function LoginPage() {
               </Link>
             </p>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   )
