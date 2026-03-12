@@ -56,3 +56,62 @@ export const api = {
   delete: (endpoint) =>
     apiRequest(endpoint, { method: 'DELETE' }),
 }
+// Authentication API calls
+export const authAPI = {
+  register: (userData) => api.post('/auth/register', userData),
+  login: (credentials) => api.post('/auth/login', credentials),
+  getMe: () => api.get('/auth/me'),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, password) => api.put(`/auth/reset-password/${token}`, { password })
+}
+
+// Programs API calls
+export const programsAPI = {
+  getAll: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return api.get(`/programs${queryString ? `?${queryString}` : ''}`)
+  },
+  getById: (id) => api.get(`/programs/${id}`),
+  search: (query, filters = {}) => {
+    const params = { q: query, ...filters }
+    const queryString = new URLSearchParams(params).toString()
+    return api.get(`/programs/search?${queryString}`)
+  },
+  create: (programData) => api.post('/programs', programData),
+  update: (id, programData) => api.put(`/programs/${id}`, programData),
+  delete: (id) => api.delete(`/programs/${id}`)
+}
+
+// Eligibility API calls
+export const eligibilityAPI = {
+  check: (personalInfo, programIds = null) => 
+    api.post('/eligibility/check', { personalInfo, programIds }),
+  getHistory: () => api.get('/eligibility/history'),
+  saveResult: (resultData) => api.post('/eligibility/save', resultData)
+}
+
+// Users API calls
+export const usersAPI = {
+  getAll: () => api.get('/users'),
+  getById: (id) => api.get(`/users/${id}`),
+  updateProfile: (profileData) => api.put('/users/profile', profileData),
+  update: (id, userData) => api.put(`/users/${id}`, userData),
+  delete: (id) => api.delete(`/users/${id}`)
+}
+
+// Utility functions
+export const setAuthToken = (token) => {
+  if (token) {
+    localStorage.setItem('authToken', token)
+  } else {
+    localStorage.removeItem('authToken')
+  }
+}
+
+export const getAuthToken = () => {
+  return localStorage.getItem('authToken')
+}
+
+export const isAuthenticated = () => {
+  return !!getAuthToken()
+}
