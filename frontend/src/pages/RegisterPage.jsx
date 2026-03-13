@@ -5,10 +5,11 @@ import { UserPlus } from 'lucide-react'
 import { Button, Card } from '../components/ui'
 import FormInput from '../components/ui/FormInput'
 import { registerSchema } from '../lib/validations'
-import { authAPI } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
+  const { register: registerUser } = useAuth()
   const {
     register,
     handleSubmit,
@@ -19,7 +20,7 @@ export default function RegisterPage() {
 
   const onSubmit = async (data) => {
     try {
-      const response = await authAPI.register(data)
+      const response = await registerUser(data)
       
       if (response.success) {
         // Redirect to email verification pending page

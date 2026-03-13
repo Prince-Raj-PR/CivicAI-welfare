@@ -10,7 +10,20 @@ import {
 } from '../utils/emailService.js'
 
 // Mock user data (replace with database later)
-let users = []
+let users = [
+  // Test user for development
+  {
+    id: 'test-user-1',
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'test@civicai.com',
+    password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
+    phone: '+1234567890',
+    role: 'user',
+    isEmailVerified: true,
+    createdAt: new Date().toISOString()
+  }
+]
 let verificationTokens = []
 let resetTokens = []
 

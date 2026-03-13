@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { CheckCircle, XCircle, Loader, Mail } from 'lucide-react'
 import { Button, Card } from '../components/ui'
+import { useAuth } from '../contexts/AuthContext'
 import { authAPI, setAuthToken } from '../lib/api'
 
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { updateUser, checkAuthStatus } = useAuth()
   const [status, setStatus] = useState('verifying') // verifying, success, error
   const [message, setMessage] = useState('')
   const [user, setUser] = useState(null)
@@ -33,11 +35,14 @@ export default function VerifyEmailPage() {
         setMessage(response.message)
         setUser(response.data.user)
         
-        // Save auth token and redirect after delay
+        // Save auth token and update auth context
         if (response.data.token) {
           setAuthToken(response.data.token)
+          updateUser(response.data.user)
+          await checkAuthStatus()
+          
           setTimeout(() => {
-            navigate('/programs')
+            navigate('/dashboard')
           }, 3000)
         }
       }
@@ -91,10 +96,10 @@ export default function VerifyEmailPage() {
                   </div>
                 )}
                 <Button 
-                  onClick={() => navigate('/programs')}
+                  onClick={() => navigate('/dashboard')}
                   className="w-full"
                 >
-                  Continue to Programs
+                  Continue to Dashboard
                 </Button>
               </>
             )}

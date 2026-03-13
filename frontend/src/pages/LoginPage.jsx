@@ -6,10 +6,12 @@ import { LogIn, Mail } from 'lucide-react'
 import { Button, Card } from '../components/ui'
 import FormInput from '../components/ui/FormInput'
 import { loginSchema } from '../lib/validations'
-import { authAPI, setAuthToken } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
+import { authAPI } from '../lib/api'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [loginError, setLoginError] = useState('')
   const [showResendVerification, setShowResendVerification] = useState(false)
   const [userEmail, setUserEmail] = useState('')
@@ -27,11 +29,10 @@ export default function LoginPage() {
       setLoginError('')
       setShowResendVerification(false)
       
-      const response = await authAPI.login(data)
+      const result = await login(data)
       
-      if (response.success) {
-        setAuthToken(response.data.token)
-        navigate('/programs')
+      if (result.success) {
+        navigate('/dashboard')
       }
     } catch (error) {
       console.error('Login failed:', error)

@@ -8,8 +8,23 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import EmailVerificationPendingPage from './pages/EmailVerificationPendingPage'
+import DashboardPage from './pages/DashboardPage'
+import { useAuth } from './contexts/AuthContext'
 
 function App() {
+  const { loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading CivicAI...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
@@ -21,9 +36,11 @@ function App() {
         <Route path="register" element={<RegisterPage />} />
         <Route path="verify-email" element={<VerifyEmailPage />} />
         <Route path="email-verification-pending" element={<EmailVerificationPendingPage />} />
+        <Route path="dashboard" element={<DashboardPage />} />
       </Route>
     </Routes>
   )
 }
+
 
 export default App
