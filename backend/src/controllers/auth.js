@@ -1,6 +1,5 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { validationResult } from 'express-validator'
 import { 
   sendVerificationEmail, 
   sendPasswordResetEmail, 
@@ -8,6 +7,11 @@ import {
   generateVerificationToken,
   generateResetToken 
 } from '../utils/emailService.js'
+import { 
+  handleValidationErrors, 
+  formatUserResponse, 
+  errorResponses 
+} from '../utils/authHelpers.js'
 
 // Mock user data (replace with database later)
 let users = [
@@ -39,26 +43,13 @@ const generateToken = (id, email) => {
 // @access  Public
 export const register = async (req, res) => {
   try {
-    // Check for validation errors
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed',
-        details: errors.array()
-      })
-    }
+    if (handleValidationErrors(req, res)) return
 
     const { firstName, lastName, email, password, phone } = req.body
 
     // Check if user already exists
     const existingUser = users.find(user => user.email === email)
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        error: 'User already exists with this email'
-      })
-    }
+    if (existingUser) return errorResponses.userExists(res)
 
     // Hash password
     const salt = await bcrypt.genSalt(10)
@@ -79,44 +70,30 @@ export const register = async (req, res) => {
 
     users.push(user)
 
-    // Generate verification token
+    // Generate and store verification token
     const verificationToken = generateVerificationToken()
     verificationTokens.push({
       token: verificationToken,
       userId: user.id,
       email: user.email,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
     })
 
-    // Send verification email
+    // Send verification email (don't fail registration if email fails)
     try {
       await sendVerificationEmail(email, firstName, verificationToken)
     } catch (emailError) {
       console.error('Failed to send verification email:', emailError)
-      // Don't fail registration if email fails
     }
 
     res.status(201).json({
       success: true,
       message: 'Registration successful! Please check your email to verify your account.',
-      data: {
-        user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          isEmailVerified: user.isEmailVerified
-        }
-      }
+      data: { user: formatUserResponse(user) }
     })
   } catch (error) {
     console.error('Register error:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Server error during registration'
-    })
+    errorResponses.serverError(res, 'Server error during registration')
   }
 }
 
@@ -125,69 +102,33 @@ export const register = async (req, res) => {
 // @access  Public
 export const login = async (req, res) => {
   try {
-    // Check for validation errors
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed',
-        details: errors.array()
-      })
-    }
+    if (handleValidationErrors(req, res)) return
 
     const { email, password } = req.body
 
     // Find user
     const user = users.find(user => user.email === email)
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      })
-    }
+    if (!user) return errorResponses.invalidCredentials(res)
 
     // Check if email is verified
-    if (!user.isEmailVerified) {
-      return res.status(401).json({
-        success: false,
-        error: 'Please verify your email address before logging in',
-        code: 'EMAIL_NOT_VERIFIED'
-      })
-    }
+    if (!user.isEmailVerified) return errorResponses.emailNotVerified(res)
 
     // Check password
     const isMatch = await bcrypt.compare(password, user.password)
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      })
-    }
+    if (!isMatch) return errorResponses.invalidCredentials(res)
 
-    // Generate token
+    // Generate token and respond
     const token = generateToken(user.id, user.email)
-
     res.json({
       success: true,
       data: {
         token,
-        user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          isEmailVerified: user.isEmailVerified
-        }
+        user: formatUserResponse(user)
       }
     })
   } catch (error) {
     console.error('Login error:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Server error during login'
-    })
+    errorResponses.serverError(res, 'Server error during login')
   }
 }
 
@@ -197,31 +138,15 @@ export const login = async (req, res) => {
 export const getMe = async (req, res) => {
   try {
     const user = users.find(user => user.id === req.user.id)
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      })
-    }
+    if (!user) return errorResponses.userNotFound(res)
 
     res.json({
       success: true,
-      data: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        createdAt: user.createdAt
-      }
+      data: formatUserResponse(user)
     })
   } catch (error) {
     console.error('Get me error:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Server error'
-    })
+    errorResponses.serverError(res)
   }
 }
 

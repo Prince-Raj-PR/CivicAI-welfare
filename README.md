@@ -112,21 +112,62 @@ civicai-welfare/
 ├── frontend/                 # React frontend application
 │   ├── src/
 │   │   ├── components/      # Reusable UI components
+│   │   │   ├── ui/         # Base UI components (Button, Input, Card, etc.)
+│   │   │   ├── Header.jsx  # Navigation header
+│   │   │   ├── Footer.jsx  # Site footer
+│   │   │   └── Layout.jsx  # Main layout wrapper
+│   │   ├── contexts/       # React contexts
+│   │   │   └── AuthContext.jsx # Authentication state management
 │   │   ├── pages/          # Page components
+│   │   │   ├── HomePage.jsx
+│   │   │   ├── LoginPage.jsx
+│   │   │   ├── RegisterPage.jsx
+│   │   │   ├── DashboardPage.jsx
+│   │   │   ├── ProgramsPage.jsx
+│   │   │   ├── VerifyEmailPage.jsx
+│   │   │   └── ...
 │   │   ├── lib/            # Utilities and API calls
+│   │   │   ├── api.js      # API service layer
+│   │   │   └── validations.js # Form validation schemas
 │   │   └── ...
 │   └── package.json
 ├── backend/                 # Node.js backend API
 │   ├── src/
 │   │   ├── controllers/    # Route handlers
+│   │   │   ├── auth.js     # Authentication logic
+│   │   │   ├── users.js    # User management
+│   │   │   ├── programs.js # Programs CRUD
+│   │   │   └── eligibility.js # Eligibility checking
 │   │   ├── routes/         # API routes
 │   │   ├── middleware/     # Custom middleware
+│   │   ├── utils/          # Utility functions
+│   │   │   ├── emailService.js # Email functionality
+│   │   │   └── authHelpers.js  # Auth utilities
 │   │   └── server.js       # Main server file
+│   ├── SMTP_SETUP.md       # Email configuration guide
 │   └── package.json
 ├── design.md               # System design document
 ├── requirements.md         # Project requirements
 └── README.md
 ```
+
+## 🧹 Code Quality & Cleanup
+
+### Recent Optimizations
+- ✅ **Removed redundant code** in auth controllers
+- ✅ **Created utility functions** for common operations
+- ✅ **Eliminated duplicate validation logic**
+- ✅ **Cleaned up unused CSS classes**
+- ✅ **Removed development-only test routes**
+- ✅ **Standardized error responses**
+- ✅ **Secured environment variables**
+
+### Code Organization
+- **Utility Functions**: Common auth operations moved to `authHelpers.js`
+- **Consistent Error Handling**: Standardized error responses across controllers
+- **Clean API Layer**: Organized API calls by feature area
+- **Modular Components**: Reusable UI components with PropTypes
+- **Context Management**: Centralized authentication state
 
 ## 🔄 Next Steps
 

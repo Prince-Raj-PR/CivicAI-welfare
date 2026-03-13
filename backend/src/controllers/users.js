@@ -1,4 +1,4 @@
-import { validationResult } from 'express-validator'
+import { handleValidationErrors, formatUserResponse, errorResponses } from '../utils/authHelpers.js'
 
 // Mock user data (same as auth.js - in real app, use database)
 let users = []
@@ -8,16 +8,7 @@ let users = []
 // @access  Private/Admin
 export const getUsers = async (req, res) => {
   try {
-    const usersWithoutPasswords = users.map(user => ({
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      createdAt: user.createdAt
-    }))
-
+    const usersWithoutPasswords = users.map(formatUserResponse)
     res.json({
       success: true,
       count: usersWithoutPasswords.length,
@@ -25,10 +16,7 @@ export const getUsers = async (req, res) => {
     })
   } catch (error) {
     console.error('Get users error:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Server error'
-    })
+    errorResponses.serverError(res)
   }
 }
 
