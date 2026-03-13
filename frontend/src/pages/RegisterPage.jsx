@@ -1,12 +1,14 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { UserPlus } from 'lucide-react'
 import { Button, Card } from '../components/ui'
 import FormInput from '../components/ui/FormInput'
 import { registerSchema } from '../lib/validations'
+import { authAPI } from '../lib/api'
 
 export default function RegisterPage() {
+  const navigate = useNavigate()
   const {
     register,
     handleSubmit,
@@ -17,12 +19,17 @@ export default function RegisterPage() {
 
   const onSubmit = async (data) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      console.log('Register data:', data)
-      // TODO: Implement actual registration logic
+      const response = await authAPI.register(data)
+      
+      if (response.success) {
+        // Redirect to email verification pending page
+        navigate('/email-verification-pending', {
+          state: { email: data.email }
+        })
+      }
     } catch (error) {
       console.error('Registration failed:', error)
+      // You might want to show an error message to the user here
     }
   }
 

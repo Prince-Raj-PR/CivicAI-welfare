@@ -14,12 +14,15 @@ CivicAI is a full-stack web application that helps citizens discover and apply f
 - ✅ Form validation with React Hook Form + Zod
 - ✅ API integration layer
 - ✅ Authentication pages (Login/Register)
+- ✅ Email verification flow
 - ✅ Programs browsing with search functionality
 - ✅ Contact and About pages
 
 #### Backend (Node.js + Express)
 - ✅ RESTful API with Express.js
 - ✅ Authentication system with JWT
+- ✅ Email verification system with SMTP
+- ✅ Password reset functionality
 - ✅ Programs management endpoints
 - ✅ Eligibility checking algorithm
 - ✅ Input validation with express-validator
@@ -30,6 +33,10 @@ CivicAI is a full-stack web application that helps citizens discover and apply f
 #### API Endpoints
 - ✅ `POST /api/v1/auth/register` - User registration
 - ✅ `POST /api/v1/auth/login` - User login
+- ✅ `POST /api/v1/auth/verify-email` - Email verification
+- ✅ `POST /api/v1/auth/resend-verification` - Resend verification email
+- ✅ `POST /api/v1/auth/forgot-password` - Password reset request
+- ✅ `PUT /api/v1/auth/reset-password/:token` - Password reset
 - ✅ `GET /api/v1/auth/me` - Get current user
 - ✅ `GET /api/v1/programs` - Get all programs
 - ✅ `GET /api/v1/programs/search` - Search programs
@@ -50,6 +57,7 @@ CivicAI is a full-stack web application that helps citizens discover and apply f
 ### Backend
 - **Node.js** - Runtime environment
 - **Express.js** - Web framework
+- **Nodemailer** - Email sending
 - **JWT** - Authentication
 - **bcryptjs** - Password hashing
 - **express-validator** - Input validation
@@ -76,6 +84,7 @@ CivicAI is a full-stack web application that helps citizens discover and apply f
    cd backend
    npm install
    cp .env.example .env
+   # Configure SMTP settings in .env (see backend/SMTP_SETUP.md)
    npm run dev
    ```
    Backend runs on: http://localhost:8000
@@ -91,6 +100,10 @@ CivicAI is a full-stack web application that helps citizens discover and apply f
 ### API Testing
 - Health Check: http://localhost:8000/health
 - Programs API: http://localhost:8000/api/v1/programs
+- SMTP Test: http://localhost:8000/api/v1/test/email
+
+### Email Configuration
+See `backend/SMTP_SETUP.md` for detailed SMTP configuration instructions.
 
 ## 📁 Project Structure
 

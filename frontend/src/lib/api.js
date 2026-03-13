@@ -62,7 +62,9 @@ export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   getMe: () => api.get('/auth/me'),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
-  resetPassword: (token, password) => api.put(`/auth/reset-password/${token}`, { password })
+  resetPassword: (token, password) => api.put(`/auth/reset-password/${token}`, { password }),
+  verifyEmail: (data) => api.post('/auth/verify-email', data),
+  resendVerification: (data) => api.post('/auth/resend-verification', data)
 }
 
 // Programs API calls

@@ -5,7 +5,9 @@ import {
   login, 
   getMe, 
   forgotPassword, 
-  resetPassword 
+  resetPassword,
+  verifyEmail,
+  resendVerification 
 } from '../controllers/auth.js'
 import { protect } from '../middleware/auth.js'
 
@@ -49,3 +51,16 @@ router.put('/reset-password/:resettoken', [
 ], resetPassword)
 
 export default router
+// @route   POST /api/v1/auth/verify-email
+// @desc    Verify email address
+// @access  Public
+router.post('/verify-email', [
+  body('token').notEmpty().withMessage('Verification token is required')
+], verifyEmail)
+
+// @route   POST /api/v1/auth/resend-verification
+// @desc    Resend verification email
+// @access  Public
+router.post('/resend-verification', [
+  body('email').isEmail().withMessage('Please provide a valid email')
+], resendVerification)

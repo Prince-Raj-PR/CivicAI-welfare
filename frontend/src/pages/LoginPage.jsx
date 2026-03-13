@@ -1,12 +1,19 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { LogIn } from 'lucide-react'
+import { LogIn, Mail } from 'lucide-react'
 import { Button, Card } from '../components/ui'
 import FormInput from '../components/ui/FormInput'
 import { loginSchema } from '../lib/validations'
+import { authAPI, setAuthToken } from '../lib/api'
 
 export default function LoginPage() {
+  const navigate = useNavigate()
+  const [loginError, setLoginError] = useState('')
+  const [showResendVerification, setShowResendVerification] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+  
   const {
     register,
     handleSubmit,
@@ -17,12 +24,36 @@ export default function LoginPage() {
 
   const onSubmit = async (data) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      console.log('Login data:', data)
-      // TODO: Implement actual login logic
+      setLoginError('')
+      setShowResendVerification(false)
+      
+      const response = await authAPI.login(data)
+      
+      if (response.success) {
+        setAuthToken(response.data.token)
+        navigate('/programs')
+      }
     } catch (error) {
       console.error('Login failed:', error)
+      
+      if (error.message.includes('EMAIL_NOT_VERIFIED') || error.message.includes('verify your email')) {
+        setShowResendVerification(true)
+        setUserEmail(data.email)
+        setLoginError('Please verify your email address before logging in.')
+      } else {
+        setLoginError(error.message || 'Login failed. Please check your credentials.')
+      }
+    }
+  }
+
+  const handleResendVerification = async () => {
+    try {
+      await authAPI.resendVerification({ email: userEmail })
+      navigate('/email-verification-pending', {
+        state: { email: userEmail }
+      })
+    } catch (error) {
+      setLoginError('Failed to resend verification email. Please try again.')
     }
   }
 
@@ -39,6 +70,24 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {loginError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800">{loginError}</p>
+                {showResendVerification && (
+                  <Button
+                    type="button"
+                    onClick={handleResendVerification}
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Resend Verification Email
+                  </Button>
+                )}
+              </div>
+            )}
+
             <FormInput
               {...register('email')}
               type="email"
