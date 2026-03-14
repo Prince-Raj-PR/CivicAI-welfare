@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.3",
+    "framer-motion": "^12.36.0",
     "lucide-react": "^0.294.0",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
