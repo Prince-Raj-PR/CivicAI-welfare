@@ -49,6 +49,11 @@ export default function Header() {
                 <Link to="/dashboard" className="text-gray-700 hover:text-primary-600">
                   Dashboard
                 </Link>
+                {user?.role === 'admin' && (
+                  <Link to="/admin" className="text-gray-700 hover:text-primary-600">
+                    Admin
+                  </Link>
+                )}
                 <div className="flex items-center space-x-2 text-gray-700">
                   <User className="w-4 h-4" />
                   <span className="text-sm">Hi, {user?.firstName}</span>
@@ -127,6 +132,15 @@ export default function Header() {
                 >
                   Dashboard
                 </Link>
+                {user?.role === 'admin' && (
+                  <Link
+                    to="/admin"
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Admin
+                  </Link>
+                )}
                 <div className="px-4 py-2 text-gray-700 border-t border-gray-200">
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4" />

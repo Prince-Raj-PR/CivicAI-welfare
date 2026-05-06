@@ -11,10 +11,11 @@ export const protect = async (req, res, next) => {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
-      // Add user info to request
+      // Add user info to request (including role)
       req.user = {
         id: decoded.id,
-        email: decoded.email
+        email: decoded.email,
+        role: decoded.role
       }
 
       next()

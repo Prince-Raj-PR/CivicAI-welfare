@@ -13,6 +13,7 @@ import authRoutes from './routes/auth.js'
 import userRoutes from './routes/users.js'
 import programRoutes from './routes/programs.js'
 import eligibilityRoutes from './routes/eligibility.js'
+import adminRoutes from './routes/admin.js'
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js'
@@ -71,6 +72,7 @@ app.use(`/api/${apiVersion}/auth`, authRoutes)
 app.use(`/api/${apiVersion}/users`, userRoutes)
 app.use(`/api/${apiVersion}/programs`, programRoutes)
 app.use(`/api/${apiVersion}/eligibility`, eligibilityRoutes)
+app.use(`/api/${apiVersion}/admin`, adminRoutes)
 
 // 404 handler
 app.use(notFound)

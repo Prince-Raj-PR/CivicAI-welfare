@@ -9,6 +9,7 @@ import RegisterPage from './pages/RegisterPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import EmailVerificationPendingPage from './pages/EmailVerificationPendingPage'
 import DashboardPage from './pages/DashboardPage'
+import AdminDashboard from './pages/AdminDashboard'
 import { useAuth } from './contexts/AuthContext'
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
         <Route path="verify-email" element={<VerifyEmailPage />} />
         <Route path="email-verification-pending" element={<EmailVerificationPendingPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="admin" element={<AdminDashboard />} />
       </Route>
     </Routes>
   )

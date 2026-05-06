@@ -15,8 +15,8 @@ import {
 } from '../utils/authHelpers.js'
 
 // Generate JWT Token
-const generateToken = (userId, email) => {
-  return jwt.sign({ id: userId, email }, process.env.JWT_SECRET, {
+const generateToken = (userId, email, role = 'user') => {
+  return jwt.sign({ id: userId, email, role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d'
   })
 }
@@ -108,7 +108,7 @@ export const login = async (req, res) => {
     await user.save()
 
     // Generate token and respond
-    const token = generateToken(user._id, user.email)
+    const token = generateToken(user._id, user.email, user.role)
     res.json({
       success: true,
       data: {
@@ -281,7 +281,7 @@ export const verifyEmail = async (req, res) => {
     }
 
     // Generate JWT token for automatic login
-    const jwtToken = generateToken(user._id, user.email)
+    const jwtToken = generateToken(user._id, user.email, user.role)
 
     res.json({
       success: true,
