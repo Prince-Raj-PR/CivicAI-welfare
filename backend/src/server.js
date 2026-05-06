@@ -5,6 +5,9 @@ import morgan from 'morgan'
 import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 
+// Database connection
+import connectDB from './config/database.js'
+
 // Import routes
 import authRoutes from './routes/auth.js'
 import userRoutes from './routes/users.js'
@@ -17,6 +20,9 @@ import { notFound } from './middleware/notFound.js'
 
 // Load environment variables
 dotenv.config()
+
+// Connect to MongoDB
+connectDB()
 
 const app = express()
 const PORT = process.env.PORT || 8000
