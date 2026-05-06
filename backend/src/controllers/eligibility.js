@@ -1,33 +1,7 @@
 import { validationResult } from 'express-validator'
-
-// Mock eligibility results storage
-let eligibilityResults = []
-
-// Mock programs data (same as programs.js)
-const programs = [
-  {
-    id: '1',
-    name: 'Supplemental Nutrition Assistance Program (SNAP)',
-    eligibilityCriteria: [
-      { field: 'income', operator: 'lte', value: 130, unit: 'percent_poverty_line' },
-      { field: 'assets', operator: 'lte', value: 2750, unit: 'dollars' }
-    ]
-  },
-  {
-    id: '2',
-    name: 'Medicaid',
-    eligibilityCriteria: [
-      { field: 'income', operator: 'lte', value: 138, unit: 'percent_poverty_line' }
-    ]
-  },
-  {
-    id: '3',
-    name: 'Housing Choice Voucher Program',
-    eligibilityCriteria: [
-      { field: 'income', operator: 'lte', value: 50, unit: 'percent_area_median_income' }
-    ]
-  }
-]
+import Program from '../models/Program.js'
+import EligibilityCheck from '../models/EligibilityCheck.js'
+import User from '../models/User.js'
 
 // Federal Poverty Guidelines 2024 (simplified)
 const povertyGuidelines = {
@@ -51,62 +25,99 @@ const getPovertyLine = (householdSize) => {
 }
 
 // Simple eligibility checking algorithm
-const checkProgramEligibility = (personalInfo, program) => {
+const checkProgramEligibility = (userProfile, program) => {
   let score = 0
-  let maxScore = program.eligibilityCriteria.length
-  let eligible = true
-  let reasons = []
+  let matchedCriteria = []
+  let unmatchedCriteria = []
+  let recommendations = []
 
-  for (const criteria of program.eligibilityCriteria) {
-    const { field, operator, value, unit } = criteria
-    let userValue = personalInfo[field]
-    let threshold = value
+  const criteria = program.eligibilityCriteria
 
-    // Convert values based on unit
-    if (unit === 'percent_poverty_line') {
-      const povertyLine = getPovertyLine(personalInfo.householdSize)
-      threshold = (value / 100) * povertyLine
-    } else if (unit === 'percent_area_median_income') {
-      // Simplified - using national median income
-      const medianIncome = 70000
-      threshold = (value / 100) * medianIncome
+  // Check age requirements
+  if (criteria.minAge !== undefined || criteria.maxAge !== undefined) {
+    const age = userProfile.age
+    if (age) {
+      if (criteria.minAge && age < criteria.minAge) {
+        unmatchedCriteria.push(`Age must be at least ${criteria.minAge}`)
+      } else if (criteria.maxAge && age > criteria.maxAge) {
+        unmatchedCriteria.push(`Age must be at most ${criteria.maxAge}`)
+      } else {
+        matchedCriteria.push('Age requirement met')
+        score += 20
+      }
     }
+  }
 
-    // Check criteria
-    let criteriaMatch = false
-    switch (operator) {
-      case 'lte':
-        criteriaMatch = userValue <= threshold
-        break
-      case 'gte':
-        criteriaMatch = userValue >= threshold
-        break
-      case 'eq':
-        criteriaMatch = userValue === value
-        break
-      default:
-        criteriaMatch = false
+  // Check income requirements
+  if (criteria.maxIncome !== undefined) {
+    const income = userProfile.annualIncome
+    if (income !== undefined) {
+      if (income <= criteria.maxIncome) {
+        matchedCriteria.push('Income requirement met')
+        score += 30
+      } else {
+        unmatchedCriteria.push(`Income exceeds maximum of $${criteria.maxIncome}`)
+      }
     }
+  }
 
-    if (criteriaMatch) {
-      score++
-      reasons.push(`✓ ${field} requirement met`)
-    } else {
-      eligible = false
-      reasons.push(`✗ ${field} requirement not met (${userValue} vs ${threshold})`)
+  // Check household size requirements
+  if (criteria.minHouseholdSize || criteria.maxHouseholdSize) {
+    const householdSize = userProfile.householdSize
+    if (householdSize) {
+      if (criteria.minHouseholdSize && householdSize < criteria.minHouseholdSize) {
+        unmatchedCriteria.push(`Household size must be at least ${criteria.minHouseholdSize}`)
+      } else if (criteria.maxHouseholdSize && householdSize > criteria.maxHouseholdSize) {
+        unmatchedCriteria.push(`Household size must be at most ${criteria.maxHouseholdSize}`)
+      } else {
+        matchedCriteria.push('Household size requirement met')
+        score += 20
+      }
+    }
+  }
+
+  // Check employment status
+  if (criteria.employmentStatus && criteria.employmentStatus.length > 0) {
+    const status = userProfile.employmentStatus
+    if (status) {
+      if (criteria.employmentStatus.includes(status)) {
+        matchedCriteria.push('Employment status requirement met')
+        score += 15
+      } else {
+        unmatchedCriteria.push(`Employment status must be one of: ${criteria.employmentStatus.join(', ')}`)
+      }
+    }
+  }
+
+  // Base score for checking
+  score += 15
+
+  // Determine eligibility
+  const isEligible = unmatchedCriteria.length === 0 && score >= 50
+
+  // Generate recommendations
+  if (isEligible) {
+    recommendations.push('You appear to be eligible for this program')
+    recommendations.push('Gather required documents before applying')
+    if (criteria.requiredDocuments && criteria.requiredDocuments.length > 0) {
+      recommendations.push(`Required documents: ${criteria.requiredDocuments.join(', ')}`)
+    }
+  } else {
+    recommendations.push('You may not meet all eligibility requirements')
+    if (unmatchedCriteria.length > 0) {
+      recommendations.push('Review the unmatched criteria below')
     }
   }
 
   return {
-    eligible,
-    score: (score / maxScore) * 100,
-    reasons,
-    details: {
-      criteriaMatched: score,
-      totalCriteria: maxScore
-    }
+    isEligible,
+    score: Math.min(score, 100),
+    matchedCriteria,
+    unmatchedCriteria,
+    recommendations
   }
 }
+
 // @desc    Check eligibility for programs
 // @route   POST /api/v1/eligibility/check
 // @access  Private
@@ -123,40 +134,55 @@ export const checkEligibility = async (req, res) => {
 
     const { personalInfo, programIds } = req.body
     
-    // If no specific programs requested, check all
-    const programsToCheck = programIds ? 
-      programs.filter(p => programIds.includes(p.id)) : 
-      programs
+    // Get programs to check
+    let programsToCheck
+    if (programIds && programIds.length > 0) {
+      programsToCheck = await Program.find({ 
+        _id: { $in: programIds },
+        status: 'active'
+      })
+    } else {
+      programsToCheck = await Program.find({ status: 'active' })
+    }
 
-    const results = programsToCheck.map(program => {
+    if (programsToCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No programs found'
+      })
+    }
+
+    // Check eligibility for each program
+    const results = []
+    for (const program of programsToCheck) {
       const eligibilityResult = checkProgramEligibility(personalInfo, program)
       
-      return {
-        programId: program.id,
-        programName: program.name,
-        ...eligibilityResult,
-        checkedAt: new Date().toISOString()
-      }
-    })
+      // Save eligibility check to database
+      const check = await EligibilityCheck.create({
+        user: req.user.id,
+        program: program._id,
+        userProfile: personalInfo,
+        result: eligibilityResult,
+        status: eligibilityResult.isEligible ? 'eligible' : 'not-eligible'
+      })
 
-    // Save results for history
-    const checkResult = {
-      id: Date.now().toString(),
-      userId: req.user.id,
-      personalInfo,
-      results,
-      createdAt: new Date().toISOString()
+      results.push({
+        programId: program._id,
+        programName: program.name,
+        programType: program.type,
+        maxBenefit: program.maxBenefit,
+        ...eligibilityResult,
+        checkId: check._id,
+        checkedAt: check.createdAt
+      })
     }
-    
-    eligibilityResults.push(checkResult)
 
     res.json({
       success: true,
       data: {
-        checkId: checkResult.id,
         summary: {
           totalPrograms: results.length,
-          eligiblePrograms: results.filter(r => r.eligible).length,
+          eligiblePrograms: results.filter(r => r.isEligible).length,
           averageScore: results.reduce((sum, r) => sum + r.score, 0) / results.length
         },
         results
@@ -176,24 +202,14 @@ export const checkEligibility = async (req, res) => {
 // @access  Private
 export const getEligibilityHistory = async (req, res) => {
   try {
-    const userResults = eligibilityResults.filter(result => result.userId === req.user.id)
-    
-    // Sort by most recent first
-    userResults.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    const { limit = 10 } = req.query
+
+    const history = await EligibilityCheck.getUserHistory(req.user.id, parseInt(limit))
 
     res.json({
       success: true,
-      count: userResults.length,
-      data: userResults.map(result => ({
-        id: result.id,
-        createdAt: result.createdAt,
-        summary: {
-          totalPrograms: result.results.length,
-          eligiblePrograms: result.results.filter(r => r.eligible).length,
-          averageScore: result.results.reduce((sum, r) => sum + r.score, 0) / result.results.length
-        },
-        results: result.results
-      }))
+      count: history.length,
+      data: history
     })
   } catch (error) {
     console.error('Get eligibility history error:', error)
@@ -204,42 +220,101 @@ export const getEligibilityHistory = async (req, res) => {
   }
 }
 
-// @desc    Save eligibility result
-// @route   POST /api/v1/eligibility/save
+// @desc    Get eligible programs for user
+// @route   GET /api/v1/eligibility/eligible
 // @access  Private
-export const saveEligibilityResult = async (req, res) => {
+export const getEligiblePrograms = async (req, res) => {
   try {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
+    const eligiblePrograms = await EligibilityCheck.getEligiblePrograms(req.user.id)
+
+    res.json({
+      success: true,
+      count: eligiblePrograms.length,
+      data: eligiblePrograms
+    })
+  } catch (error) {
+    console.error('Get eligible programs error:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Server error'
+    })
+  }
+}
+
+// @desc    Update application status
+// @route   PUT /api/v1/eligibility/:id/application
+// @access  Private
+export const updateApplicationStatus = async (req, res) => {
+  try {
+    const { status, notes } = req.body
+    
+    const check = await EligibilityCheck.findOne({
+      _id: req.params.id,
+      user: req.user.id
+    })
+
+    if (!check) {
+      return res.status(404).json({
         success: false,
-        error: 'Validation failed',
-        details: errors.array()
+        error: 'Eligibility check not found'
       })
     }
 
-    const { programId, eligible, score, notes } = req.body
-    
-    const savedResult = {
-      id: Date.now().toString(),
-      userId: req.user.id,
-      programId,
-      eligible,
-      score,
-      notes: notes || '',
-      savedAt: new Date().toISOString()
-    }
+    await check.updateApplicationStatus(status, notes)
 
-    // In a real app, you'd save this to a separate collection
-    // For now, we'll just return success
-    
-    res.status(201).json({
+    res.json({
       success: true,
-      data: savedResult,
-      message: 'Eligibility result saved successfully'
+      data: check,
+      message: 'Application status updated successfully'
     })
   } catch (error) {
-    console.error('Save eligibility result error:', error)
+    console.error('Update application status error:', error)
+    
+    if (error.name === 'CastError') {
+      return res.status(404).json({
+        success: false,
+        error: 'Eligibility check not found'
+      })
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Server error'
+    })
+  }
+}
+
+// @desc    Get single eligibility check
+// @route   GET /api/v1/eligibility/:id
+// @access  Private
+export const getEligibilityCheck = async (req, res) => {
+  try {
+    const check = await EligibilityCheck.findOne({
+      _id: req.params.id,
+      user: req.user.id
+    }).populate('program', 'name type agency maxBenefit applicationProcess')
+
+    if (!check) {
+      return res.status(404).json({
+        success: false,
+        error: 'Eligibility check not found'
+      })
+    }
+
+    res.json({
+      success: true,
+      data: check
+    })
+  } catch (error) {
+    console.error('Get eligibility check error:', error)
+    
+    if (error.name === 'CastError') {
+      return res.status(404).json({
+        success: false,
+        error: 'Eligibility check not found'
+      })
+    }
+    
     res.status(500).json({
       success: false,
       error: 'Server error'

@@ -35,9 +35,8 @@ export default function RegisterPage() {
       const response = await registerUser(data)
       
       if (response.success) {
-        navigate('/email-verification-pending', {
-          state: { email: data.email }
-        })
+        // Redirect to OTP verification page with email
+        navigate(`/verify-email?email=${encodeURIComponent(data.email)}`)
       }
     } catch (error) {
       console.error('Registration failed:', error)

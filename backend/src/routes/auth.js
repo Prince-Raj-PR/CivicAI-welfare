@@ -20,7 +20,7 @@ router.post('/register', [
   body('firstName').notEmpty().withMessage('First name is required'),
   body('lastName').notEmpty().withMessage('Last name is required'),
   body('email').isEmail().withMessage('Please provide a valid email'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
 ], register)
 
 // @route   POST /api/v1/auth/login
@@ -37,30 +37,34 @@ router.post('/login', [
 router.get('/me', protect, getMe)
 
 // @route   POST /api/v1/auth/forgot-password
-// @desc    Forgot password
+// @desc    Request password reset OTP
 // @access  Public
 router.post('/forgot-password', [
   body('email').isEmail().withMessage('Please provide a valid email')
 ], forgotPassword)
 
-// @route   PUT /api/v1/auth/reset-password/:resettoken
-// @desc    Reset password
+// @route   PUT /api/v1/auth/reset-password
+// @desc    Reset password with OTP
 // @access  Public
-router.put('/reset-password/:resettoken', [
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+router.put('/reset-password', [
+  body('email').isEmail().withMessage('Please provide a valid email'),
+  body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
 ], resetPassword)
 
-export default router
 // @route   POST /api/v1/auth/verify-email
-// @desc    Verify email address
+// @desc    Verify email with OTP
 // @access  Public
 router.post('/verify-email', [
-  body('token').notEmpty().withMessage('Verification token is required')
+  body('email').isEmail().withMessage('Please provide a valid email'),
+  body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits')
 ], verifyEmail)
 
 // @route   POST /api/v1/auth/resend-verification
-// @desc    Resend verification email
+// @desc    Resend verification OTP
 // @access  Public
 router.post('/resend-verification', [
   body('email').isEmail().withMessage('Please provide a valid email')
 ], resendVerification)
+
+export default router

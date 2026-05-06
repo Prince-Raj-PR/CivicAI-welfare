@@ -36,19 +36,19 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    emailVerificationToken: {
+    emailVerificationOTP: {
       type: String,
       select: false,
     },
-    emailVerificationExpires: {
+    emailVerificationOTPExpires: {
       type: Date,
       select: false,
     },
-    passwordResetToken: {
+    passwordResetOTP: {
       type: String,
       select: false,
     },
-    passwordResetExpires: {
+    passwordResetOTPExpires: {
       type: Date,
       select: false,
     },

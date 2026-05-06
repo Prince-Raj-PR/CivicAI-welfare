@@ -2,8 +2,10 @@ import express from 'express'
 import { body } from 'express-validator'
 import { 
   checkEligibility, 
-  getEligibilityHistory, 
-  saveEligibilityResult 
+  getEligibilityHistory,
+  getEligiblePrograms,
+  updateApplicationStatus,
+  getEligibilityCheck
 } from '../controllers/eligibility.js'
 import { protect } from '../middleware/auth.js'
 
@@ -14,10 +16,11 @@ const router = express.Router()
 // @access  Private
 router.post('/check', protect, [
   body('personalInfo').isObject().withMessage('Personal information is required'),
-  body('personalInfo.age').isNumeric().withMessage('Age must be a number'),
-  body('personalInfo.income').isNumeric().withMessage('Income must be a number'),
-  body('personalInfo.householdSize').isNumeric().withMessage('Household size must be a number'),
-  body('personalInfo.state').notEmpty().withMessage('State is required')
+  body('personalInfo.age').optional().isNumeric().withMessage('Age must be a number'),
+  body('personalInfo.annualIncome').optional().isNumeric().withMessage('Income must be a number'),
+  body('personalInfo.householdSize').optional().isNumeric().withMessage('Household size must be a number'),
+  body('personalInfo.employmentStatus').optional().isString().withMessage('Employment status must be a string'),
+  body('programIds').optional().isArray().withMessage('Program IDs must be an array')
 ], checkEligibility)
 
 // @route   GET /api/v1/eligibility/history
@@ -25,13 +28,23 @@ router.post('/check', protect, [
 // @access  Private
 router.get('/history', protect, getEligibilityHistory)
 
-// @route   POST /api/v1/eligibility/save
-// @desc    Save eligibility result
+// @route   GET /api/v1/eligibility/eligible
+// @desc    Get eligible programs for user
 // @access  Private
-router.post('/save', protect, [
-  body('programId').notEmpty().withMessage('Program ID is required'),
-  body('eligible').isBoolean().withMessage('Eligible status must be boolean'),
-  body('score').isNumeric().withMessage('Score must be a number')
-], saveEligibilityResult)
+router.get('/eligible', protect, getEligiblePrograms)
+
+// @route   GET /api/v1/eligibility/:id
+// @desc    Get single eligibility check
+// @access  Private
+router.get('/:id', protect, getEligibilityCheck)
+
+// @route   PUT /api/v1/eligibility/:id/application
+// @desc    Update application status
+// @access  Private
+router.put('/:id/application', protect, [
+  body('status').isIn(['not-started', 'in-progress', 'submitted', 'approved', 'rejected'])
+    .withMessage('Invalid application status'),
+  body('notes').optional().isString().withMessage('Notes must be a string')
+], updateApplicationStatus)
 
 export default router

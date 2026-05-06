@@ -1,93 +1,45 @@
 import { validationResult } from 'express-validator'
-
-// Mock programs data
-let programs = [
-  {
-    id: '1',
-    name: 'Supplemental Nutrition Assistance Program (SNAP)',
-    description: 'Provides food assistance to low-income individuals and families.',
-    type: 'Food Assistance',
-    agency: 'USDA',
-    maxBenefit: 835,
-    location: 'Nationwide',
-    eligibilityCriteria: [
-      { field: 'income', operator: 'lte', value: 130, unit: 'percent_poverty_line' },
-      { field: 'assets', operator: 'lte', value: 2750, unit: 'dollars' },
-      { field: 'citizenship', operator: 'eq', value: 'us_citizen_or_eligible_non_citizen' }
-    ],
-    applicationUrl: 'https://www.fns.usda.gov/snap/apply',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: '2',
-    name: 'Medicaid',
-    description: 'Health insurance program for low-income individuals and families.',
-    type: 'Healthcare',
-    agency: 'CMS',
-    maxBenefit: 0,
-    location: 'Nationwide',
-    eligibilityCriteria: [
-      { field: 'income', operator: 'lte', value: 138, unit: 'percent_poverty_line' },
-      { field: 'age', operator: 'gte', value: 0, unit: 'years' }
-    ],
-    applicationUrl: 'https://www.medicaid.gov/apply',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: '3',
-    name: 'Housing Choice Voucher Program',
-    description: 'Rental assistance for low-income families, elderly, and disabled.',
-    type: 'Housing',
-    agency: 'HUD',
-    maxBenefit: 1200,
-    location: 'Nationwide',
-    eligibilityCriteria: [
-      { field: 'income', operator: 'lte', value: 50, unit: 'percent_area_median_income' },
-      { field: 'citizenship', operator: 'eq', value: 'us_citizen_or_eligible_non_citizen' }
-    ],
-    applicationUrl: 'https://www.hud.gov/topics/housing_choice_voucher',
-    createdAt: new Date().toISOString()
-  }
-]
+import Program from '../models/Program.js'
 
 // @desc    Get all programs
 // @route   GET /api/v1/programs
 // @access  Public
 export const getPrograms = async (req, res) => {
   try {
-    const { page = 1, limit = 10, type, agency } = req.query
+    const { page = 1, limit = 10, type, agency, status = 'active' } = req.query
     
-    let filteredPrograms = [...programs]
+    // Build query
+    const query = { status }
     
     // Filter by type
     if (type) {
-      filteredPrograms = filteredPrograms.filter(program => 
-        program.type.toLowerCase().includes(type.toLowerCase())
-      )
+      query.type = new RegExp(type, 'i')
     }
     
     // Filter by agency
     if (agency) {
-      filteredPrograms = filteredPrograms.filter(program => 
-        program.agency.toLowerCase().includes(agency.toLowerCase())
-      )
+      query.agency = new RegExp(agency, 'i')
     }
     
-    // Pagination
-    const startIndex = (page - 1) * limit
-    const endIndex = page * limit
-    const paginatedPrograms = filteredPrograms.slice(startIndex, endIndex)
+    // Execute query with pagination
+    const programs = await Program.find(query)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .sort({ createdAt: -1 })
+    
+    // Get total count
+    const total = await Program.countDocuments(query)
     
     res.json({
       success: true,
-      count: paginatedPrograms.length,
-      total: filteredPrograms.length,
+      count: programs.length,
+      total,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        pages: Math.ceil(filteredPrograms.length / limit)
+        pages: Math.ceil(total / parseInt(limit))
       },
-      data: paginatedPrograms
+      data: programs
     })
   } catch (error) {
     console.error('Get programs error:', error)
@@ -97,12 +49,13 @@ export const getPrograms = async (req, res) => {
     })
   }
 }
+
 // @desc    Get single program
 // @route   GET /api/v1/programs/:id
 // @access  Public
 export const getProgram = async (req, res) => {
   try {
-    const program = programs.find(program => program.id === req.params.id)
+    const program = await Program.findById(req.params.id)
     
     if (!program) {
       return res.status(404).json({
@@ -111,12 +64,24 @@ export const getProgram = async (req, res) => {
       })
     }
 
+    // Increment view count
+    await program.incrementViews()
+
     res.json({
       success: true,
       data: program
     })
   } catch (error) {
     console.error('Get program error:', error)
+    
+    // Handle invalid ObjectId
+    if (error.name === 'CastError') {
+      return res.status(404).json({
+        success: false,
+        error: 'Program not found'
+      })
+    }
+    
     res.status(500).json({
       success: false,
       error: 'Server error'
@@ -129,7 +94,7 @@ export const getProgram = async (req, res) => {
 // @access  Public
 export const searchPrograms = async (req, res) => {
   try {
-    const { q, type, agency } = req.query
+    const { q, type, agency, maxIncome, location } = req.query
     
     if (!q) {
       return res.status(400).json({
@@ -138,23 +103,32 @@ export const searchPrograms = async (req, res) => {
       })
     }
     
-    let results = programs.filter(program => 
-      program.name.toLowerCase().includes(q.toLowerCase()) ||
-      program.description.toLowerCase().includes(q.toLowerCase())
-    )
+    // Use MongoDB text search
+    let query = {
+      $text: { $search: q },
+      status: 'active'
+    }
     
     // Additional filters
     if (type) {
-      results = results.filter(program => 
-        program.type.toLowerCase().includes(type.toLowerCase())
-      )
+      query.type = new RegExp(type, 'i')
     }
     
     if (agency) {
-      results = results.filter(program => 
-        program.agency.toLowerCase().includes(agency.toLowerCase())
-      )
+      query.agency = new RegExp(agency, 'i')
     }
+    
+    if (maxIncome) {
+      query['eligibilityCriteria.maxIncome'] = { $gte: parseInt(maxIncome) }
+    }
+    
+    if (location) {
+      query.location = new RegExp(location, 'i')
+    }
+
+    const results = await Program.find(query, {
+      score: { $meta: 'textScore' }
+    }).sort({ score: { $meta: 'textScore' } })
 
     res.json({
       success: true,
@@ -184,13 +158,7 @@ export const createProgram = async (req, res) => {
       })
     }
 
-    const program = {
-      id: Date.now().toString(),
-      ...req.body,
-      createdAt: new Date().toISOString()
-    }
-
-    programs.push(program)
+    const program = await Program.create(req.body)
 
     res.status(201).json({
       success: true,
@@ -198,6 +166,15 @@ export const createProgram = async (req, res) => {
     })
   } catch (error) {
     console.error('Create program error:', error)
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        error: Object.values(error.errors).map(err => err.message).join(', ')
+      })
+    }
+    
     res.status(500).json({
       success: false,
       error: 'Server error'
@@ -210,28 +187,45 @@ export const createProgram = async (req, res) => {
 // @access  Private/Admin
 export const updateProgram = async (req, res) => {
   try {
-    const programIndex = programs.findIndex(program => program.id === req.params.id)
+    const program = await Program.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      {
+        new: true, // Return updated document
+        runValidators: true // Run model validators
+      }
+    )
     
-    if (programIndex === -1) {
+    if (!program) {
       return res.status(404).json({
         success: false,
         error: 'Program not found'
       })
     }
 
-    programs[programIndex] = { 
-      ...programs[programIndex], 
-      ...req.body, 
-      id: req.params.id,
-      updatedAt: new Date().toISOString()
-    }
-
     res.json({
       success: true,
-      data: programs[programIndex]
+      data: program
     })
   } catch (error) {
     console.error('Update program error:', error)
+    
+    // Handle invalid ObjectId
+    if (error.name === 'CastError') {
+      return res.status(404).json({
+        success: false,
+        error: 'Program not found'
+      })
+    }
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        error: Object.values(error.errors).map(err => err.message).join(', ')
+      })
+    }
+    
     res.status(500).json({
       success: false,
       error: 'Server error'
@@ -244,16 +238,14 @@ export const updateProgram = async (req, res) => {
 // @access  Private/Admin
 export const deleteProgram = async (req, res) => {
   try {
-    const programIndex = programs.findIndex(program => program.id === req.params.id)
+    const program = await Program.findByIdAndDelete(req.params.id)
     
-    if (programIndex === -1) {
+    if (!program) {
       return res.status(404).json({
         success: false,
         error: 'Program not found'
       })
     }
-
-    programs.splice(programIndex, 1)
 
     res.json({
       success: true,
@@ -261,6 +253,15 @@ export const deleteProgram = async (req, res) => {
     })
   } catch (error) {
     console.error('Delete program error:', error)
+    
+    // Handle invalid ObjectId
+    if (error.name === 'CastError') {
+      return res.status(404).json({
+        success: false,
+        error: 'Program not found'
+      })
+    }
+    
     res.status(500).json({
       success: false,
       error: 'Server error'
