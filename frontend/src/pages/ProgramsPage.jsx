@@ -1,14 +1,31 @@
 import { useState, useEffect } from 'react'
-import { Search, MapPin, DollarSign, Building2, Filter, Sparkles } from 'lucide-react'
+import { Search, MapPin, DollarSign, Building2, Filter, Sparkles, X, CheckCircle, XCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Button, Card, Badge, Input } from '../components/ui'
-import { programsAPI } from '../lib/api'
+import { Button, Card, Badge, Input, Modal } from '../components/ui'
+import { programsAPI, eligibilityAPI } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
+import { useNavigate } from 'react-router-dom'
 
 export default function ProgramsPage() {
   const [programs, setPrograms] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedProgram, setSelectedProgram] = useState(null)
+  const [showEligibilityModal, setShowEligibilityModal] = useState(false)
+  const [eligibilityResult, setEligibilityResult] = useState(null)
+  const [checkingEligibility, setCheckingEligibility] = useState(false)
+  
+  const { isLoggedIn } = useAuth()
+  const navigate = useNavigate()
+
+  // Form state for eligibility check
+  const [eligibilityForm, setEligibilityForm] = useState({
+    annualIncome: '',
+    householdSize: '',
+    employmentStatus: 'employed',
+    age: ''
+  })
 
   // Animation variants
   const containerVariants = {
@@ -100,6 +117,60 @@ export default function ProgramsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleCheckEligibility = (program) => {
+    console.log('Check eligibility clicked for:', program.name)
+    
+    if (!isLoggedIn) {
+      console.log('User not logged in, redirecting...')
+      alert('Please login to check eligibility')
+      navigate('/login')
+      return
+    }
+    
+    console.log('Opening eligibility modal')
+    setSelectedProgram(program)
+    setShowEligibilityModal(true)
+    setEligibilityResult(null)
+  }
+
+  const handleEligibilitySubmit = async (e) => {
+    e.preventDefault()
+    
+    try {
+      setCheckingEligibility(true)
+      
+      const personalInfo = {
+        annualIncome: parseInt(eligibilityForm.annualIncome),
+        householdSize: parseInt(eligibilityForm.householdSize),
+        employmentStatus: eligibilityForm.employmentStatus,
+        age: parseInt(eligibilityForm.age)
+      }
+      
+      const response = await eligibilityAPI.check(personalInfo, [selectedProgram._id])
+      
+      if (response.success && response.data.length > 0) {
+        setEligibilityResult(response.data[0])
+      }
+    } catch (err) {
+      console.error('Error checking eligibility:', err)
+      alert('Failed to check eligibility. Please try again.')
+    } finally {
+      setCheckingEligibility(false)
+    }
+  }
+
+  const closeModal = () => {
+    setShowEligibilityModal(false)
+    setSelectedProgram(null)
+    setEligibilityResult(null)
+    setEligibilityForm({
+      annualIncome: '',
+      householdSize: '',
+      employmentStatus: 'employed',
+      age: ''
+    })
   }
 
   if (loading) {
@@ -347,14 +418,16 @@ export default function ProgramsPage() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: index * 0.1 + 0.4 }}
                   >
-                    <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                    <button
+                      onClick={() => {
+                        console.log('BUTTON CLICKED!', program.name)
+                        alert('Button clicked! Program: ' + program.name)
+                        handleCheckEligibility(program)
+                      }}
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
                     >
-                      <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
-                        Check Eligibility
-                      </Button>
-                    </motion.div>
+                      Check Eligibility
+                    </button>
                   </motion.div>
                 </Card>
               </motion.div>
@@ -362,6 +435,208 @@ export default function ProgramsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Eligibility Check Modal */}
+      <Modal isOpen={showEligibilityModal} onClose={closeModal}>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              {eligibilityResult ? 'Eligibility Result' : 'Check Eligibility'}
+            </h2>
+            <button
+              onClick={closeModal}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {selectedProgram && !eligibilityResult && (
+            <>
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                <h3 className="font-semibold text-blue-900 mb-1">{selectedProgram.name}</h3>
+                <p className="text-sm text-blue-700">{selectedProgram.agency}</p>
+              </div>
+
+              <form onSubmit={handleEligibilitySubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Annual Income ($)
+                  </label>
+                  <Input
+                    type="number"
+                    required
+                    value={eligibilityForm.annualIncome}
+                    onChange={(e) => setEligibilityForm({ ...eligibilityForm, annualIncome: e.target.value })}
+                    placeholder="e.g., 35000"
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Household Size
+                  </label>
+                  <Input
+                    type="number"
+                    required
+                    min="1"
+                    value={eligibilityForm.householdSize}
+                    onChange={(e) => setEligibilityForm({ ...eligibilityForm, householdSize: e.target.value })}
+                    placeholder="e.g., 3"
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Employment Status
+                  </label>
+                  <select
+                    required
+                    value={eligibilityForm.employmentStatus}
+                    onChange={(e) => setEligibilityForm({ ...eligibilityForm, employmentStatus: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="employed">Employed</option>
+                    <option value="unemployed">Unemployed</option>
+                    <option value="self-employed">Self-Employed</option>
+                    <option value="retired">Retired</option>
+                    <option value="student">Student</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Age
+                  </label>
+                  <Input
+                    type="number"
+                    required
+                    min="1"
+                    max="120"
+                    value={eligibilityForm.age}
+                    onChange={(e) => setEligibilityForm({ ...eligibilityForm, age: e.target.value })}
+                    placeholder="e.g., 35"
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="button"
+                    onClick={closeModal}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={checkingEligibility}
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    {checkingEligibility ? 'Checking...' : 'Check Eligibility'}
+                  </Button>
+                </div>
+              </form>
+            </>
+          )}
+
+          {eligibilityResult && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
+                  eligibilityResult.isEligible 
+                    ? 'bg-green-100' 
+                    : 'bg-red-100'
+                }`}
+              >
+                {eligibilityResult.isEligible ? (
+                  <CheckCircle className="w-12 h-12 text-green-600" />
+                ) : (
+                  <XCircle className="w-12 h-12 text-red-600" />
+                )}
+              </motion.div>
+
+              <h3 className={`text-2xl font-bold mb-2 ${
+                eligibilityResult.isEligible ? 'text-green-900' : 'text-red-900'
+              }`}>
+                {eligibilityResult.isEligible ? 'You are Eligible!' : 'Not Eligible'}
+              </h3>
+
+              <p className="text-gray-600 mb-4">
+                {eligibilityResult.isEligible 
+                  ? `Congratulations! You meet the requirements for ${selectedProgram.name}.`
+                  : `Unfortunately, you don't meet the current requirements for ${selectedProgram.name}.`
+                }
+              </p>
+
+              <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+                <h4 className="font-semibold text-gray-900 mb-3">Match Score</h4>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${eligibilityResult.matchScore}%` }}
+                      transition={{ duration: 1, delay: 0.5 }}
+                      className={`h-full ${
+                        eligibilityResult.matchScore >= 70 
+                          ? 'bg-green-500' 
+                          : eligibilityResult.matchScore >= 40 
+                          ? 'bg-yellow-500' 
+                          : 'bg-red-500'
+                      }`}
+                    />
+                  </div>
+                  <span className="font-bold text-gray-900">{eligibilityResult.matchScore}%</span>
+                </div>
+
+                {eligibilityResult.reasons && eligibilityResult.reasons.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="font-semibold text-gray-900 mb-2">Details</h4>
+                    <ul className="space-y-1 text-sm text-gray-600">
+                      {eligibilityResult.reasons.map((reason, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="text-blue-500 mt-1">•</span>
+                          <span>{reason}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={closeModal}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Close
+                </Button>
+                {eligibilityResult.isEligible && (
+                  <Button
+                    onClick={() => {
+                      window.open(selectedProgram.applicationProcess?.url, '_blank')
+                    }}
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    Apply Now
+                  </Button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </Modal>
     </motion.div>
   )
 }
