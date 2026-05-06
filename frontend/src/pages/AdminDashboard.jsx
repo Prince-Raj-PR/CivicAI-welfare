@@ -18,17 +18,35 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
+      setError('')
+      
+      console.log('Fetching dashboard data...')
+      
       const [statsRes, activityRes] = await Promise.all([
         api.get('/admin/stats'),
         api.get('/admin/activity?limit=10')
       ])
 
-      setStats(statsRes.data.data)
-      setActivity(activityRes.data.data)
-      setError('')
+      console.log('Stats response:', statsRes)
+      console.log('Activity response:', activityRes)
+
+      // API returns { success: true, data: {...} }, so we need .data
+      setStats(statsRes.data)
+      setActivity(activityRes.data)
     } catch (err) {
       console.error('Error fetching dashboard data:', err)
-      setError(err.response?.data?.error || 'Failed to load dashboard data')
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response,
+        status: err.response?.status
+      })
+      
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to load dashboard data'
+      setError(errorMsg)
+      
+      // Set empty data to prevent crashes
+      setStats(null)
+      setActivity([])
     } finally {
       setLoading(false)
     }
@@ -90,6 +108,22 @@ const AdminDashboard = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error if not authorized
+  if (error && error.includes('denied')) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="text-6xl mb-4">🔒</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-sm text-gray-500">
+            You need admin privileges to access this page. Please contact an administrator.
+          </p>
         </div>
       </div>
     )
