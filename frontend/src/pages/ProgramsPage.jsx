@@ -120,16 +120,12 @@ export default function ProgramsPage() {
   }
 
   const handleCheckEligibility = (program) => {
-    console.log('Check eligibility clicked for:', program.name)
-    
     if (!isLoggedIn) {
-      console.log('User not logged in, redirecting...')
       alert('Please login to check eligibility')
       navigate('/login')
       return
     }
     
-    console.log('Opening eligibility modal')
     setSelectedProgram(program)
     setShowEligibilityModal(true)
     setEligibilityResult(null)
@@ -148,14 +144,37 @@ export default function ProgramsPage() {
         age: parseInt(eligibilityForm.age)
       }
       
+      console.log('Checking eligibility with:', personalInfo)
+      console.log('Program ID:', selectedProgram._id)
+      
       const response = await eligibilityAPI.check(personalInfo, [selectedProgram._id])
       
-      if (response.success && response.data.length > 0) {
-        setEligibilityResult(response.data[0])
+      console.log('Eligibility response:', response)
+      
+      // Backend returns { success: true, data: { summary, results } }
+      if (response.success && response.data && response.data.results && response.data.results.length > 0) {
+        console.log('Setting result:', response.data.results[0])
+        const result = response.data.results[0]
+        
+        // Transform to match expected format
+        setEligibilityResult({
+          program: selectedProgram,
+          isEligible: result.isEligible,
+          matchScore: result.score,
+          reasons: [
+            ...result.matchedCriteria,
+            ...result.unmatchedCriteria,
+            ...result.recommendations
+          ]
+        })
+      } else {
+        console.error('No eligibility data in response:', response)
+        alert('No eligibility data received. Please try again.')
       }
     } catch (err) {
       console.error('Error checking eligibility:', err)
-      alert('Failed to check eligibility. Please try again.')
+      console.error('Error details:', err.response)
+      alert('Failed to check eligibility: ' + (err.response?.data?.error || err.message))
     } finally {
       setCheckingEligibility(false)
     }
@@ -419,12 +438,8 @@ export default function ProgramsPage() {
                     transition={{ delay: index * 0.1 + 0.4 }}
                   >
                     <button
-                      onClick={() => {
-                        console.log('BUTTON CLICKED!', program.name)
-                        alert('Button clicked! Program: ' + program.name)
-                        handleCheckEligibility(program)
-                      }}
-                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                      onClick={() => handleCheckEligibility(program)}
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
                     >
                       Check Eligibility
                     </button>
