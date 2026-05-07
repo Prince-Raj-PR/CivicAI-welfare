@@ -2,6 +2,7 @@ import { validationResult } from 'express-validator'
 import Program from '../models/Program.js'
 import EligibilityCheck from '../models/EligibilityCheck.js'
 import User from '../models/User.js'
+import { analyzeEligibilityWithAI, getAIRecommendations } from '../services/aiService.js'
 
 // Federal Poverty Guidelines 2024 (simplified)
 const povertyGuidelines = {
@@ -157,13 +158,27 @@ export const checkEligibility = async (req, res) => {
     for (const program of programsToCheck) {
       const eligibilityResult = checkProgramEligibility(personalInfo, program)
       
+      // Enhance with AI analysis if Groq API key is configured
+      let finalResult = eligibilityResult
+      if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your-groq-api-key-here') {
+        try {
+          console.log('🤖 Calling AI enhancement for program:', program.name)
+          finalResult = await analyzeEligibilityWithAI(personalInfo, program, eligibilityResult)
+          console.log('✅ AI enhancement completed')
+        } catch (aiError) {
+          console.error('❌ AI enhancement failed, using basic result:', aiError)
+        }
+      } else {
+        console.log('⚠️  Groq AI not configured, skipping AI enhancement')
+      }
+      
       // Save eligibility check to database
       const check = await EligibilityCheck.create({
         user: req.user.id,
         program: program._id,
         userProfile: personalInfo,
-        result: eligibilityResult,
-        status: eligibilityResult.isEligible ? 'eligible' : 'not-eligible'
+        result: finalResult,
+        status: finalResult.isEligible ? 'eligible' : 'not-eligible'
       })
 
       results.push({
@@ -171,7 +186,7 @@ export const checkEligibility = async (req, res) => {
         programName: program.name,
         programType: program.type,
         maxBenefit: program.maxBenefit,
-        ...eligibilityResult,
+        ...finalResult,
         checkId: check._id,
         checkedAt: check.createdAt
       })

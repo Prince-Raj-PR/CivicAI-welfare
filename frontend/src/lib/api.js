@@ -101,6 +101,14 @@ export const usersAPI = {
   delete: (id) => api.delete(`/users/${id}`)
 }
 
+// AI API calls
+export const aiAPI = {
+  chat: (message, context = {}) => api.post('/ai/chat', { message, context }),
+  getRecommendations: (personalInfo) => api.post('/ai/recommendations', { personalInfo }),
+  simplifyDescription: (description) => api.post('/ai/simplify', { description }),
+  getApplicationTips: (programId, personalInfo) => api.post('/ai/tips', { programId, personalInfo })
+}
+
 // Utility functions
 export const setAuthToken = (token) => {
   if (token) {

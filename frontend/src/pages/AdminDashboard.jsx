@@ -114,15 +114,24 @@ const AdminDashboard = () => {
   }
 
   // Show error if not authorized
-  if (error && error.includes('denied')) {
+  if (error && (error.includes('denied') || error.includes('Admin'))) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-8">
           <div className="text-6xl mb-4">🔒</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
           <p className="text-gray-600 mb-4">{error}</p>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 text-left">
+            <p className="text-sm text-yellow-800 font-medium mb-2">💡 Quick Fix:</p>
+            <ol className="text-sm text-yellow-700 space-y-1 list-decimal list-inside">
+              <li>Logout from your account</li>
+              <li>Login again with admin credentials</li>
+              <li>Email: admin@civicai.com</li>
+              <li>Password: Admin@123456</li>
+            </ol>
+          </div>
           <p className="text-sm text-gray-500">
-            You need admin privileges to access this page. Please contact an administrator.
+            You need admin privileges to access this page. If you just became an admin, please logout and login again to refresh your access token.
           </p>
         </div>
       </div>

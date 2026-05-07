@@ -156,7 +156,7 @@ export default function ProgramsPage() {
         console.log('Setting result:', response.data.results[0])
         const result = response.data.results[0]
         
-        // Transform to match expected format
+        // Transform to match expected format and include AI insights
         setEligibilityResult({
           program: selectedProgram,
           isEligible: result.isEligible,
@@ -165,7 +165,9 @@ export default function ProgramsPage() {
             ...result.matchedCriteria,
             ...result.unmatchedCriteria,
             ...result.recommendations
-          ]
+          ],
+          // Include AI insights if available
+          aiInsights: result.aiInsights || null
         })
       } else {
         console.error('No eligibility data in response:', response)
@@ -626,6 +628,56 @@ export default function ProgramsPage() {
                       ))}
                     </ul>
                   </div>
+                )}
+
+                {/* AI Insights */}
+                {eligibilityResult.aiInsights && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="w-5 h-5 text-blue-600" />
+                      <h4 className="font-semibold text-blue-900">AI Insights</h4>
+                    </div>
+                    
+                    {eligibilityResult.aiInsights.explanation && (
+                      <div className="mb-3">
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {eligibilityResult.aiInsights.explanation}
+                        </p>
+                      </div>
+                    )}
+
+                    {eligibilityResult.aiInsights.advice && (
+                      <div className="mb-3">
+                        <p className="text-sm font-medium text-gray-800 mb-1">💡 Advice:</p>
+                        <p className="text-sm text-gray-700">
+                          {eligibilityResult.aiInsights.advice}
+                        </p>
+                      </div>
+                    )}
+
+                    {eligibilityResult.aiInsights.applicationTips && eligibilityResult.isEligible && (
+                      <div className="mb-3">
+                        <p className="text-sm font-medium text-gray-800 mb-1">📝 Application Tips:</p>
+                        <p className="text-sm text-gray-700">
+                          {eligibilityResult.aiInsights.applicationTips}
+                        </p>
+                      </div>
+                    )}
+
+                    {eligibilityResult.aiInsights.similarPrograms && eligibilityResult.aiInsights.similarPrograms.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-800 mb-1">🔍 Similar Programs:</p>
+                        <p className="text-sm text-gray-700">
+                          {eligibilityResult.aiInsights.similarPrograms.join(', ')}
+                        </p>
+                      </div>
+                    )}
+                  </motion.div>
                 )}
               </div>
 
