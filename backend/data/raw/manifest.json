@@ -1,0 +1,211 @@
+{
+  "snap_fact_sheet": {
+    "key": "snap_fact_sheet",
+    "url": "https://www.fns.usda.gov/sites/default/files/resource-files/snap-program-fact-sheet.pdf",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": 403,
+    "error": "403 Client Error: Forbidden for url: https://www.fns.usda.gov/sites/default/files/resource-files/snap-program-fact-sheet.pdf",
+    "fetched_at": "2026-05-25T06:40:34.546301"
+  },
+  "snap_eligibility_page": {
+    "key": "snap_eligibility_page",
+    "url": "https://www.fns.usda.gov/snap/recipient/eligibility",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": 403,
+    "error": "403 Client Error: Forbidden for url: https://www.fns.usda.gov/snap/recipient/eligibility",
+    "fetched_at": "2026-05-25T06:40:36.083184"
+  },
+  "snap_how_to_apply": {
+    "key": "snap_how_to_apply",
+    "url": "https://www.fns.usda.gov/snap/recipient/how-to-apply",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": 403,
+    "error": "403 Client Error: Forbidden for url: https://www.fns.usda.gov/snap/recipient/how-to-apply",
+    "fetched_at": "2026-05-25T06:40:37.564385"
+  },
+  "medicaid_eligibility_page": {
+    "key": "medicaid_eligibility_page",
+    "url": "https://www.medicaid.gov/medicaid/eligibility/index.html",
+    "status": "ok",
+    "filepath": "/Users/princeraj/Desktop/CIVICAI/backend/data/raw/html/medicaid_eligibility_page__index.html",
+    "size_bytes": 150292,
+    "sha256": "17a0934b6b4406ac84e31c6a3076bf0bb4462318b1c018b65d49ebe81f319326",
+    "http_status": 200,
+    "error": null,
+    "fetched_at": "2026-05-25T06:40:42.184510"
+  },
+  "medicaid_how_to_apply": {
+    "key": "medicaid_how_to_apply",
+    "url": "https://www.medicaid.gov/medicaid/eligibility/medicaid-chip-application-process/index.html",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": 404,
+    "error": "404 Client Error: Not Found for url: https://www.medicaid.gov/medicaid/eligibility/medicaid-chip-application-process/index.html",
+    "fetched_at": "2026-05-25T06:40:44.330957"
+  },
+  "section8_overview": {
+    "key": "section8_overview",
+    "url": "https://www.hud.gov/program_offices/public_indian_housing/programs/hcv",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": null,
+    "error": "HTTPSConnectionPool(host='www.hud.gov', port=443): Max retries exceeded with url: /program_offices/public_indian_housing/programs/hcv (Caused by NameResolutionError(\"<urllib3.connection.HTTPSConnection object at 0x10497b610>: Failed to resolve 'www.hud.gov' ([Errno 8] nodename nor servname provided, or not known)\"))",
+    "fetched_at": "2026-05-25T06:43:36.596464"
+  },
+  "hud_voucher_fact_sheet": {
+    "key": "hud_voucher_fact_sheet",
+    "url": "https://www.hud.gov/sites/documents/DOC_11714.PDF",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": null,
+    "error": "HTTPSConnectionPool(host='www.hud.gov', port=443): Max retries exceeded with url: /sites/documents/DOC_11714.PDF (Caused by NameResolutionError(\"<urllib3.connection.HTTPSConnection object at 0x104a18550>: Failed to resolve 'www.hud.gov' ([Errno 8] nodename nor servname provided, or not known)\"))",
+    "fetched_at": "2026-05-25T06:44:58.857673"
+  },
+  "tanf_overview": {
+    "key": "tanf_overview",
+    "url": "https://www.acf.hhs.gov/ofa/programs/tanf",
+    "status": "ok",
+    "filepath": "/Users/princeraj/Desktop/CIVICAI/backend/data/raw/html/tanf_overview__tanf.html",
+    "size_bytes": 54722,
+    "sha256": "1364af83d31c10e6341dd5da176738ee4d6021a628a21eb3b79478ea3ccec15d",
+    "http_status": 200,
+    "error": null,
+    "fetched_at": "2026-05-25T06:45:04.229270"
+  },
+  "tanf_fact_sheet": {
+    "key": "tanf_fact_sheet",
+    "url": "https://www.acf.hhs.gov/sites/default/files/documents/ofa/tanf_fact_sheet.pdf",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": 502,
+    "error": "502 Server Error: Bad Gateway for url: https://acf.gov:443/sites/default/files/documents/ofa/tanf_fact_sheet.pdf",
+    "fetched_at": "2026-05-25T06:45:28.389195"
+  },
+  "wic_eligibility": {
+    "key": "wic_eligibility",
+    "url": "https://www.fns.usda.gov/wic/wic-eligibility-requirements",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": 403,
+    "error": "403 Client Error: Forbidden for url: https://www.fns.usda.gov/wic/wic-eligibility-requirements",
+    "fetched_at": "2026-05-25T06:45:30.076426"
+  },
+  "wic_fact_sheet": {
+    "key": "wic_fact_sheet",
+    "url": "https://www.fns.usda.gov/sites/default/files/resource-files/wic-program-fact-sheet.pdf",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": 403,
+    "error": "403 Client Error: Forbidden for url: https://www.fns.usda.gov/sites/default/files/resource-files/wic-program-fact-sheet.pdf",
+    "fetched_at": "2026-05-25T06:45:31.579632"
+  },
+  "liheap_overview": {
+    "key": "liheap_overview",
+    "url": "https://www.acf.hhs.gov/ocs/programs/liheap",
+    "status": "ok",
+    "filepath": "/Users/princeraj/Desktop/CIVICAI/backend/data/raw/html/liheap_overview__liheap.html",
+    "size_bytes": 73513,
+    "sha256": "18768b35dd6c8983d0eb937114fe8e9f4c15fb9c26ac91472f8ef3d627f7ab26",
+    "http_status": 200,
+    "error": null,
+    "fetched_at": "2026-05-25T06:45:35.566718"
+  },
+  "liheap_fact_sheet": {
+    "key": "liheap_fact_sheet",
+    "url": "https://www.acf.hhs.gov/sites/default/files/documents/ocs/liheap-fact-sheet.pdf",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": 404,
+    "error": "404 Client Error: Not Found for url: https://acf.gov:443/sites/default/files/documents/ocs/liheap-fact-sheet.pdf",
+    "fetched_at": "2026-05-25T06:45:38.218401"
+  },
+  "ssi_overview": {
+    "key": "ssi_overview",
+    "url": "https://www.ssa.gov/ssi/",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": 403,
+    "error": "403 Client Error: Forbidden for url: https://www.ssa.gov/ssi/",
+    "fetched_at": "2026-05-25T06:45:41.134440"
+  },
+  "ssi_eligibility": {
+    "key": "ssi_eligibility",
+    "url": "https://www.ssa.gov/ssi/text-eligibility-ussi.htm",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": 403,
+    "error": "403 Client Error: Forbidden for url: https://www.ssa.gov/ssi/text-eligibility-ussi.htm",
+    "fetched_at": "2026-05-25T06:45:42.573910"
+  },
+  "ccdf_overview": {
+    "key": "ccdf_overview",
+    "url": "https://www.acf.hhs.gov/occ/ccdf-fundamentals",
+    "status": "failed",
+    "filepath": null,
+    "size_bytes": 0,
+    "sha256": null,
+    "http_status": 404,
+    "error": "404 Client Error: Not Found for url: https://acf.gov:443/occ/ccdf-fundamentals",
+    "fetched_at": "2026-05-25T06:45:46.315579"
+  },
+  "poverty_guidelines": {
+    "key": "poverty_guidelines",
+    "url": "https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines",
+    "status": "ok",
+    "filepath": "/Users/princeraj/Desktop/CIVICAI/backend/data/raw/html/poverty_guidelines__poverty-guidelines.html",
+    "size_bytes": 55155,
+    "sha256": "f266a447204632d1b08a261c1ef80d4a86ebc8e98bd50d37bb8c11875afdc0ba",
+    "http_status": 200,
+    "error": null,
+    "fetched_at": "2026-05-25T06:45:49.616854"
+  },
+  "benefits_gov_home": {
+    "key": "benefits_gov_home",
+    "url": "https://www.benefits.gov/",
+    "status": "ok",
+    "filepath": "/Users/princeraj/Desktop/CIVICAI/backend/data/raw/html/benefits_gov_home__www.benefits.gov.html",
+    "size_bytes": 37358,
+    "sha256": "1c1e28df609318df4b43c7fe9c30f123832384d0a0c93947a48bba044d0af7b2",
+    "http_status": 200,
+    "error": null,
+    "fetched_at": "2026-05-25T06:45:54.674405"
+  },
+  "myscheme_home": {
+    "key": "myscheme_home",
+    "url": "https://www.myscheme.gov.in/",
+    "status": "ok",
+    "filepath": "/Users/princeraj/Desktop/CIVICAI/backend/data/raw/html/myscheme_home__www.myscheme.gov.in.html",
+    "size_bytes": 119343,
+    "sha256": "228b3a1a0121bb8b731f322abe115af6a64741f104c63de182c8c0534ae8d7b3",
+    "http_status": 200,
+    "error": null,
+    "fetched_at": "2026-05-25T06:48:19.256664+00:00"
+  }
+}
