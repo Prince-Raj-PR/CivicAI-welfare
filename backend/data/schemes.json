@@ -1,13 +1,5 @@
-{
-  "source": "sample_pmjay.json",
-  "status": "ok",
-  "changes": [
-    "allowed_categories: ['SC', 'ST', 'OBC', 'EWS', 'BPL'] → ['Below Poverty Line (BPL)', 'Economically Weaker Section (EWS)', 'Other Backward Classes (OBC)', 'Scheduled Caste (SC)', 'Scheduled Tribe (ST)']",
-    "required_documents: ['Aadhaar card', 'Ration card', 'SECC registration proof'] → ['Aadhaar Card', 'Ration Card', 'SECC 2011 Registration Proof']"
-  ],
-  "error": null,
-  "normalized_at": "2026-05-25T07:44:37.466568+00:00",
-  "normalized_data": {
+[
+  {
     "scheme_name": "PM-JAY Ayushman Bharat Scheme",
     "description": "Pradhan Mantri Jan Arogya Yojana (PM-JAY) provides health coverage of Rs. 5 lakh per family per year to economically vulnerable families listed in SECC 2011.",
     "income_max": 250000,
@@ -29,6 +21,8 @@
       "Ration Card",
       "SECC 2011 Registration Proof"
     ],
-    "application_process": "Visit nearest Ayushman Mitra at empanelled hospital with Aadhaar card."
+    "application_process": "Visit nearest Ayushman Mitra at empanelled hospital with Aadhaar card.",
+    "_source": "sample_pmjay",
+    "_pipeline_run": "20260525_074437"
   }
-}
+]

@@ -1,0 +1,90 @@
+{
+  "run_id": "20260525_074437",
+  "started_at": "2026-05-25T07:44:37.463774+00:00",
+  "finished_at": "2026-05-25T07:44:37.467555+00:00",
+  "status": "ok",
+  "stages": [
+    {
+      "stage": 1,
+      "name": "fetcher",
+      "status": "skipped",
+      "items_in": 0,
+      "items_out": 0,
+      "items_fail": 0,
+      "duration_s": 0.0,
+      "error": null,
+      "notes": [
+        "skipped by flag/from_stage"
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "pdf_parser",
+      "status": "skipped",
+      "items_in": 0,
+      "items_out": 0,
+      "items_fail": 0,
+      "duration_s": 0.0,
+      "error": null,
+      "notes": [
+        "skipped by flag/from_stage"
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "text_cleaner",
+      "status": "skipped",
+      "items_in": 0,
+      "items_out": 0,
+      "items_fail": 0,
+      "duration_s": 0.0,
+      "error": null,
+      "notes": [
+        "skipped by from_stage"
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "extractor",
+      "status": "skipped",
+      "items_in": 0,
+      "items_out": 0,
+      "items_fail": 0,
+      "duration_s": 0.0,
+      "error": null,
+      "notes": [
+        "skipped by flag/from_stage"
+      ]
+    },
+    {
+      "stage": 5,
+      "name": "validator",
+      "status": "skipped",
+      "items_in": 0,
+      "items_out": 0,
+      "items_fail": 0,
+      "duration_s": 0.0,
+      "error": null,
+      "notes": [
+        "skipped by from_stage"
+      ]
+    },
+    {
+      "stage": 6,
+      "name": "normalizer",
+      "status": "ok",
+      "items_in": 1,
+      "items_out": 1,
+      "items_fail": 0,
+      "duration_s": 0.0028162080016045365,
+      "error": null,
+      "notes": [
+        "2 field normalizations applied",
+        "0 skipped"
+      ]
+    }
+  ],
+  "schemes_out": 1,
+  "log_file": "/Users/princeraj/Desktop/CIVICAI/backend/data/raw/logs/pipeline_20260525_074437.log",
+  "error": null
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "source": "sample_pmjay.json",
+    "status": "ok",
+    "changes": 2,
+    "error": null,
+    "normalized_at": "2026-05-25T07:44:37.466568+00:00",
+    "scheme_name": "PM-JAY Ayushman Bharat Scheme"
+  }
+]
