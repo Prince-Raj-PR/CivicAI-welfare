@@ -72,14 +72,24 @@ export default function ContactPage() {
 
   const onSubmit = async (data) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      console.log('Contact data:', data)
-      // TODO: Implement actual contact form submission
-      reset() // Clear form after successful submission
-      alert('Message sent successfully!')
+      // Send contact form data to backend
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/contact`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+      
+      if (response.ok) {
+        reset() // Clear form after successful submission
+        alert('Message sent successfully! We\'ll get back to you within 24 hours.')
+      } else {
+        throw new Error('Failed to send message')
+      }
     } catch (error) {
       console.error('Failed to send message:', error)
+      alert('Failed to send message. Please try again or contact us directly via email.')
     }
   }
 
