@@ -4,6 +4,7 @@ import helmet from 'helmet'
 import morgan from 'morgan'
 import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
+import fileUpload from 'express-fileupload'
 
 // Database connection
 import connectDB from './config/database.js'
@@ -15,6 +16,9 @@ import programRoutes from './routes/programs.js'
 import eligibilityRoutes from './routes/eligibility.js'
 import adminRoutes from './routes/admin.js'
 import aiRoutes from './routes/ai.js'
+import applicationRoutes from './routes/applications.js'
+import documentRoutes from './routes/documents.js'
+import notificationRoutes from './routes/notifications.js'
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js'
@@ -65,6 +69,13 @@ app.use(morgan('combined'))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 
+// File upload middleware
+app.use(fileUpload({
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max file size
+  abortOnLimit: true,
+  createParentPath: true,
+}))
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -83,6 +94,9 @@ app.use(`/api/${apiVersion}/programs`, programRoutes)
 app.use(`/api/${apiVersion}/eligibility`, eligibilityRoutes)
 app.use(`/api/${apiVersion}/admin`, adminRoutes)
 app.use(`/api/${apiVersion}/ai`, aiRoutes)
+app.use(`/api/${apiVersion}/applications`, applicationRoutes)
+app.use(`/api/${apiVersion}/documents`, documentRoutes)
+app.use(`/api/${apiVersion}/notifications`, notificationRoutes)
 
 // 404 handler
 app.use(notFound)
