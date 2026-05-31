@@ -1,28 +1,71 @@
-import { fetchAndImportPrograms } from '../services/programFetcher.js'
+import { fetchAndImportPrograms, loadSchemesFromPipeline } from '../services/programFetcher.js'
 import Program from '../models/Program.js'
 import User from '../models/User.js'
 import EligibilityCheck from '../models/EligibilityCheck.js'
+import { readFileSync, existsSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 
-// @desc    Import programs from government sources
+const __filename = fileURLToPath(import.meta.url)
+const __dirname  = dirname(__filename)
+const SCHEMES_JSON = join(__dirname, '../../data/schemes.json')
+
+// @desc    Import programs from AI pipeline (schemes.json)
 // @route   POST /api/v1/admin/programs/import
 // @access  Private/Admin
 export const importPrograms = async (req, res) => {
   try {
-    console.log('🔄 Starting program import...')
-    
+    console.log('🔄 Starting program import from AI pipeline...')
     const result = await fetchAndImportPrograms()
-
     res.json({
       success: true,
-      message: 'Programs imported successfully',
-      data: result
+      message: 'Programs imported successfully from AI pipeline',
+      data: result,
     })
   } catch (error) {
     console.error('Import programs error:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Failed to import programs'
+    res.status(500).json({ success: false, error: 'Failed to import programs' })
+  }
+}
+
+// @desc    Get pipeline status (schemes.json metadata)
+// @route   GET /api/v1/admin/pipeline/status
+// @access  Private/Admin
+export const getPipelineStatus = async (req, res) => {
+  try {
+    if (!existsSync(SCHEMES_JSON)) {
+      return res.json({
+        success: true,
+        data: {
+          available: false,
+          message: 'schemes.json not found. Run the Python pipeline first.',
+          schemesPath: SCHEMES_JSON,
+        },
+      })
+    }
+
+    const raw     = readFileSync(SCHEMES_JSON, 'utf-8')
+    const schemes = JSON.parse(raw)
+    const runs    = [...new Set(schemes.map(s => s._pipeline_run).filter(Boolean))]
+
+    res.json({
+      success: true,
+      data: {
+        available:    true,
+        totalSchemes: schemes.length,
+        lastRun:      runs[runs.length - 1] || null,
+        allRuns:      runs,
+        schemesPath:  SCHEMES_JSON,
+        preview:      schemes.slice(0, 3).map(s => ({
+          name:       s.scheme_name,
+          state:      s.state,
+          income_max: s.income_max,
+          source:     s._source,
+        })),
+      },
     })
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message })
   }
 }
 
@@ -136,6 +179,7 @@ export const getRecentActivity = async (req, res) => {
 
 export default {
   importPrograms,
+  getPipelineStatus,
   getAdminStats,
-  getRecentActivity
+  getRecentActivity,
 }

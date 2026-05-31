@@ -4,44 +4,30 @@ import EligibilityCheck from '../models/EligibilityCheck.js'
 import User from '../models/User.js'
 import { analyzeEligibilityWithAI, getAIRecommendations } from '../services/aiService.js'
 
-// Federal Poverty Guidelines 2024 (simplified)
-const povertyGuidelines = {
-  1: 15060,
-  2: 20440,
-  3: 25820,
-  4: 31200,
-  5: 36580,
-  6: 41960,
-  7: 47340,
-  8: 52720
+// Indian Poverty Line (BPL) thresholds — annual INR (approximate)
+const INDIA_BPL_ANNUAL = {
+  rural:  96000,   // ₹8,000/month
+  urban:  120000,  // ₹10,000/month
+  default: 100000,
 }
 
-// Calculate poverty line for household size
-const getPovertyLine = (householdSize) => {
-  if (householdSize <= 8) {
-    return povertyGuidelines[householdSize]
-  }
-  // For each additional person, add $5,380
-  return povertyGuidelines[8] + ((householdSize - 8) * 5380)
-}
-
-// Simple eligibility checking algorithm
+// Eligibility checking algorithm — supports both legacy US fields and new Indian pipeline fields
 const checkProgramEligibility = (userProfile, program) => {
   let score = 0
-  let matchedCriteria = []
-  let unmatchedCriteria = []
-  let recommendations = []
+  const matchedCriteria   = []
+  const unmatchedCriteria = []
+  const recommendations   = []
 
-  const criteria = program.eligibilityCriteria
+  const criteria = program.eligibilityCriteria || {}
 
-  // Check age requirements
-  if (criteria.minAge !== undefined || criteria.maxAge !== undefined) {
+  // ── Age ──────────────────────────────────────────────────────────────────
+  if (criteria.minAge != null || criteria.maxAge != null) {
     const age = userProfile.age
-    if (age) {
+    if (age != null) {
       if (criteria.minAge && age < criteria.minAge) {
-        unmatchedCriteria.push(`Age must be at least ${criteria.minAge}`)
+        unmatchedCriteria.push(`Minimum age required: ${criteria.minAge} years`)
       } else if (criteria.maxAge && age > criteria.maxAge) {
-        unmatchedCriteria.push(`Age must be at most ${criteria.maxAge}`)
+        unmatchedCriteria.push(`Maximum age allowed: ${criteria.maxAge} years`)
       } else {
         matchedCriteria.push('Age requirement met')
         score += 20
@@ -49,54 +35,95 @@ const checkProgramEligibility = (userProfile, program) => {
     }
   }
 
-  // Check income requirements
-  if (criteria.maxIncome !== undefined) {
+  // ── Income ───────────────────────────────────────────────────────────────
+  if (criteria.maxIncome != null) {
     const income = userProfile.annualIncome
-    if (income !== undefined) {
+    if (income != null) {
       if (income <= criteria.maxIncome) {
-        matchedCriteria.push('Income requirement met')
+        matchedCriteria.push(`Income within limit (₹${criteria.maxIncome.toLocaleString('en-IN')}/year)`)
         score += 30
       } else {
-        unmatchedCriteria.push(`Income exceeds maximum of $${criteria.maxIncome}`)
+        unmatchedCriteria.push(`Annual income exceeds limit of ₹${criteria.maxIncome.toLocaleString('en-IN')}`)
       }
     }
   }
 
-  // Check household size requirements
+  // ── Household size ───────────────────────────────────────────────────────
   if (criteria.minHouseholdSize || criteria.maxHouseholdSize) {
-    const householdSize = userProfile.householdSize
-    if (householdSize) {
-      if (criteria.minHouseholdSize && householdSize < criteria.minHouseholdSize) {
-        unmatchedCriteria.push(`Household size must be at least ${criteria.minHouseholdSize}`)
-      } else if (criteria.maxHouseholdSize && householdSize > criteria.maxHouseholdSize) {
-        unmatchedCriteria.push(`Household size must be at most ${criteria.maxHouseholdSize}`)
+    const hs = userProfile.householdSize
+    if (hs != null) {
+      if (criteria.minHouseholdSize && hs < criteria.minHouseholdSize) {
+        unmatchedCriteria.push(`Minimum household size: ${criteria.minHouseholdSize}`)
+      } else if (criteria.maxHouseholdSize && hs > criteria.maxHouseholdSize) {
+        unmatchedCriteria.push(`Maximum household size: ${criteria.maxHouseholdSize}`)
       } else {
         matchedCriteria.push('Household size requirement met')
-        score += 20
+        score += 15
       }
     }
   }
 
-  // Check employment status
+  // ── Employment status ────────────────────────────────────────────────────
   if (criteria.employmentStatus && criteria.employmentStatus.length > 0) {
     const status = userProfile.employmentStatus
     if (status) {
       if (criteria.employmentStatus.includes(status)) {
         matchedCriteria.push('Employment status requirement met')
-        score += 15
+        score += 10
       } else {
         unmatchedCriteria.push(`Employment status must be one of: ${criteria.employmentStatus.join(', ')}`)
       }
     }
   }
 
-  // Base score for checking
+  // ── Allowed categories (Indian pipeline field) ───────────────────────────
+  if (criteria.allowedCategories && criteria.allowedCategories.length > 0) {
+    const userCategory = userProfile.category  // e.g. "SC", "OBC", "General"
+    if (userCategory) {
+      // Match against canonical full names or short codes
+      const matched = criteria.allowedCategories.some(cat =>
+        cat.toLowerCase().includes(userCategory.toLowerCase()) ||
+        userCategory.toLowerCase().includes(cat.toLowerCase().split('(')[0].trim())
+      )
+      if (matched) {
+        matchedCriteria.push(`Category eligible: ${userCategory}`)
+        score += 15
+      } else {
+        unmatchedCriteria.push(`Category not in eligible list: ${criteria.allowedCategories.join(', ')}`)
+      }
+    } else {
+      // No category provided — give partial credit (open to all if no restriction)
+      score += 5
+    }
+  }
+
+  // ── Student requirement ──────────────────────────────────────────────────
+  if (criteria.studentRequired === true) {
+    if (userProfile.isStudent === true || userProfile.employmentStatus === 'student') {
+      matchedCriteria.push('Student status requirement met')
+      score += 5
+    } else {
+      unmatchedCriteria.push('Must be a student to qualify')
+    }
+  }
+
+  // ── Disability requirement ───────────────────────────────────────────────
+  if (criteria.disabilityRequired === true) {
+    if (userProfile.hasDisability === true) {
+      matchedCriteria.push('Disability requirement met')
+      score += 5
+    } else {
+      unmatchedCriteria.push('Must have a disability to qualify')
+    }
+  }
+
+  // ── Base score ───────────────────────────────────────────────────────────
   score += 15
 
-  // Determine eligibility
+  // ── Eligibility decision ─────────────────────────────────────────────────
   const isEligible = unmatchedCriteria.length === 0 && score >= 50
 
-  // Generate recommendations
+  // ── Recommendations ──────────────────────────────────────────────────────
   if (isEligible) {
     recommendations.push('You appear to be eligible for this program')
     recommendations.push('Gather required documents before applying')
@@ -115,7 +142,7 @@ const checkProgramEligibility = (userProfile, program) => {
     score: Math.min(score, 100),
     matchedCriteria,
     unmatchedCriteria,
-    recommendations
+    recommendations,
   }
 }
 

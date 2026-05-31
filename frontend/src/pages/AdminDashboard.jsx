@@ -8,6 +8,7 @@ const AdminDashboard = () => {
   const [activity, setActivity] = useState([])
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState(null)
+  const [pipelineStatus, setPipelineStatus] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -19,32 +20,19 @@ const AdminDashboard = () => {
     try {
       setLoading(true)
       setError('')
-      
-      console.log('Fetching dashboard data...')
-      
-      const [statsRes, activityRes] = await Promise.all([
+
+      const [statsRes, activityRes, pipelineRes] = await Promise.all([
         api.get('/admin/stats'),
-        api.get('/admin/activity?limit=10')
+        api.get('/admin/activity?limit=10'),
+        api.get('/admin/pipeline/status').catch(() => ({ data: null })),
       ])
 
-      console.log('Stats response:', statsRes)
-      console.log('Activity response:', activityRes)
-
-      // API returns { success: true, data: {...} }, so we need .data
       setStats(statsRes.data)
       setActivity(activityRes.data)
+      setPipelineStatus(pipelineRes?.data ?? null)
     } catch (err) {
-      console.error('Error fetching dashboard data:', err)
-      console.error('Error details:', {
-        message: err.message,
-        response: err.response,
-        status: err.response?.status
-      })
-      
       const errorMsg = err.response?.data?.error || err.message || 'Failed to load dashboard data'
       setError(errorMsg)
-      
-      // Set empty data to prevent crashes
       setStats(null)
       setActivity([])
     } finally {
@@ -53,32 +41,18 @@ const AdminDashboard = () => {
   }
 
   const handleImportPrograms = async () => {
-    if (!confirm('This will import/update programs from government sources. Continue?')) {
+    if (!confirm('This will import/update programs from the AI pipeline (schemes.json). Continue?')) {
       return
     }
-
     try {
       setImporting(true)
       setImportResult(null)
       setError('')
-
       const response = await api.post('/admin/programs/import')
-      
-      console.log('Import response:', response)
       setImportResult(response.data)
-      
-      // Refresh stats after import
       await fetchDashboardData()
-      
-      alert('Programs imported successfully!')
+      alert(`✅ Import complete! ${response.data.imported} imported, ${response.data.updated} updated.`)
     } catch (err) {
-      console.error('Error importing programs:', err)
-      console.error('Error details:', {
-        message: err.message,
-        response: err.response,
-        status: err.response?.status,
-        data: err.response?.data
-      })
       const errorMsg = err.response?.data?.error || err.message || 'Failed to import programs'
       setError(errorMsg)
       alert(`Failed to import programs: ${errorMsg}`)
@@ -89,31 +63,26 @@ const AdminDashboard = () => {
 
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
   }
-
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
+    visible: { opacity: 1, y: 0 },
   }
 
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
           <p className="mt-4 text-gray-600">Loading dashboard...</p>
         </div>
       </div>
     )
   }
 
-  // Show error if not authorized
+  // ── Access denied ──────────────────────────────────────────────────────────
   if (error && (error.includes('denied') || error.includes('Admin'))) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
@@ -131,13 +100,14 @@ const AdminDashboard = () => {
             </ol>
           </div>
           <p className="text-sm text-gray-500">
-            You need admin privileges to access this page. If you just became an admin, please logout and login again to refresh your access token.
+            Logout and login again to refresh your access token with admin role.
           </p>
         </div>
       </div>
     )
   }
 
+  // ── Dashboard ──────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
       <motion.div
@@ -149,84 +119,97 @@ const AdminDashboard = () => {
         {/* Header */}
         <motion.div variants={itemVariants} className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600">Manage programs and monitor system activity</p>
+          <p className="text-gray-600">Manage Indian welfare programs powered by the AI ingestion pipeline</p>
         </motion.div>
 
-        {/* Error Message */}
+        {/* Error banner */}
         {error && (
-          <motion.div
-            variants={itemVariants}
-            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
-          >
+          <motion.div variants={itemVariants} className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-red-600">{error}</p>
           </motion.div>
         )}
 
-        {/* Import Programs Section */}
+        {/* ── AI Pipeline Status ─────────────────────────────────────────── */}
         <motion.div variants={itemVariants} className="mb-8">
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
+          <Card className="p-6 border-l-4 border-purple-500">
+            <div className="flex items-start justify-between flex-wrap gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Import Government Programs
+                <h2 className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-2">
+                  🤖 AI Pipeline Status
                 </h2>
-                <p className="text-gray-600">
-                  Fetch and import welfare programs from government sources
-                </p>
+                {pipelineStatus ? (
+                  pipelineStatus.available ? (
+                    <div className="space-y-1 text-sm text-gray-600">
+                      <p>
+                        <span className="font-medium text-green-700">✅ schemes.json ready</span>
+                        {' — '}
+                        <span className="font-semibold text-gray-900">{pipelineStatus.totalSchemes}</span> scheme(s) available
+                      </p>
+                      <p>Last pipeline run: <span className="font-mono text-xs bg-gray-100 px-1 rounded">{pipelineStatus.lastRun || '—'}</span></p>
+                      {pipelineStatus.preview?.length > 0 && (
+                        <p className="text-xs text-gray-500">
+                          Preview: {pipelineStatus.preview.map(s => s.name).join(' · ')}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded p-3 mt-2">
+                      <p className="font-medium">⚠️ schemes.json not found</p>
+                      <p className="mt-1 font-mono text-xs">Run: <code>python3 backend/data/pipeline.py</code></p>
+                    </div>
+                  )
+                ) : (
+                  <p className="text-sm text-gray-400">Checking pipeline status…</p>
+                )}
               </div>
+
+              {/* Import button */}
               <Button
                 onClick={handleImportPrograms}
-                disabled={importing}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
+                disabled={importing || !pipelineStatus?.available}
+                className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-6 py-3 whitespace-nowrap"
               >
                 {importing ? (
-                  <>
-                    <span className="animate-spin mr-2">⏳</span>
-                    Importing...
-                  </>
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin">⏳</span> Importing…
+                  </span>
                 ) : (
-                  '📥 Import Programs'
+                  '📥 Import from Pipeline'
                 )}
               </Button>
             </div>
 
-            {/* Import Result */}
+            {/* Import result */}
             {importResult && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg"
+                className="mt-5 p-4 bg-green-50 border border-green-200 rounded-lg"
               >
-                <h3 className="font-semibold text-green-900 mb-2">Import Summary</h3>
+                <h3 className="font-semibold text-green-900 mb-3">Import Summary</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-600">Total</p>
-                    <p className="text-2xl font-bold text-gray-900">{importResult.total}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Imported</p>
-                    <p className="text-2xl font-bold text-green-600">{importResult.imported}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Updated</p>
-                    <p className="text-2xl font-bold text-blue-600">{importResult.updated}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Skipped</p>
-                    <p className="text-2xl font-bold text-gray-600">{importResult.skipped}</p>
-                  </div>
+                  {[
+                    { label: 'Total',    value: importResult.total,    color: 'text-gray-900' },
+                    { label: 'Imported', value: importResult.imported, color: 'text-green-600' },
+                    { label: 'Updated',  value: importResult.updated,  color: 'text-blue-600' },
+                    { label: 'Skipped',  value: importResult.skipped,  color: 'text-gray-500' },
+                  ].map(({ label, value, color }) => (
+                    <div key={label}>
+                      <p className="text-gray-500">{label}</p>
+                      <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                    </div>
+                  ))}
                 </div>
               </motion.div>
             )}
           </Card>
         </motion.div>
 
-        {/* Statistics Grid */}
+        {/* ── Statistics Grid ────────────────────────────────────────────── */}
         {stats && (
           <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {/* Programs Stats */}
             <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Programs</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 Programs</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Total</span>
@@ -238,14 +221,13 @@ const AdminDashboard = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Inactive</span>
-                  <span className="text-xl font-semibold text-gray-500">{stats.programs.inactive}</span>
+                  <span className="text-xl font-semibold text-gray-400">{stats.programs.inactive}</span>
                 </div>
               </div>
             </Card>
 
-            {/* Users Stats */}
             <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Users</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">👥 Users</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Total</span>
@@ -262,9 +244,8 @@ const AdminDashboard = () => {
               </div>
             </Card>
 
-            {/* Eligibility Checks Stats */}
             <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Eligibility Checks</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">✅ Eligibility Checks</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Total</span>
@@ -279,11 +260,10 @@ const AdminDashboard = () => {
           </motion.div>
         )}
 
-        {/* Recent Activity */}
+        {/* ── Recent Activity ────────────────────────────────────────────── */}
         <motion.div variants={itemVariants}>
           <Card className="p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Recent Activity</h2>
-            
             {activity.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No recent activity</p>
             ) : (
@@ -298,9 +278,9 @@ const AdminDashboard = () => {
                   >
                     <div className="flex items-center space-x-3">
                       <div className={`w-2 h-2 rounded-full ${
-                        item.type === 'program' ? 'bg-blue-500' :
-                        item.type === 'user' ? 'bg-green-500' :
-                        'bg-purple-500'
+                        item.type === 'program'     ? 'bg-blue-500'   :
+                        item.type === 'user'        ? 'bg-green-500'  :
+                                                      'bg-purple-500'
                       }`} />
                       <div>
                         <p className="text-sm font-medium text-gray-900">{item.item}</p>
