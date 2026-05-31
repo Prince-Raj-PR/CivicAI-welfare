@@ -1,14 +1,15 @@
+import { validationResult } from 'express-validator'
 import { handleValidationErrors, formatUserResponse, errorResponses } from '../utils/authHelpers.js'
-
-// Mock user data (same as auth.js - in real app, use database)
-let users = []
+import User from '../models/User.js'
 
 // @desc    Get all users
 // @route   GET /api/v1/users
 // @access  Private/Admin
 export const getUsers = async (req, res) => {
   try {
-    const usersWithoutPasswords = users.map(formatUserResponse)
+    const users = await User.find().select('-password -otp -otpExpiry')
+    const usersWithoutPasswords = users.map(user => formatUserResponse(user.toObject()))
+    
     res.json({
       success: true,
       count: usersWithoutPasswords.length,
@@ -25,7 +26,7 @@ export const getUsers = async (req, res) => {
 // @access  Private
 export const getUser = async (req, res) => {
   try {
-    const user = users.find(user => user.id === req.params.id)
+    const user = await User.findById(req.params.id).select('-password -otp -otpExpiry')
     
     if (!user) {
       return res.status(404).json({
@@ -35,7 +36,7 @@ export const getUser = async (req, res) => {
     }
 
     // Only allow users to see their own profile or admin to see any
-    if (req.user.id !== user.id && req.user.role !== 'admin') {
+    if (req.user.id !== user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         error: 'Not authorized to access this user'
@@ -44,15 +45,7 @@ export const getUser = async (req, res) => {
 
     res.json({
       success: true,
-      data: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        createdAt: user.createdAt
-      }
+      data: formatUserResponse(user.toObject())
     })
   } catch (error) {
     console.error('Get user error:', error)
@@ -67,29 +60,28 @@ export const getUser = async (req, res) => {
 // @access  Private/Admin
 export const updateUser = async (req, res) => {
   try {
-    const userIndex = users.findIndex(user => user.id === req.params.id)
+    const user = await User.findById(req.params.id)
     
-    if (userIndex === -1) {
+    if (!user) {
       return res.status(404).json({
         success: false,
         error: 'User not found'
       })
     }
 
-    // Update user
-    users[userIndex] = { ...users[userIndex], ...req.body, id: req.params.id }
+    // Update allowed fields
+    const allowedFields = ['firstName', 'lastName', 'phone', 'role', 'isActive']
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        user[field] = req.body[field]
+      }
+    })
+
+    await user.save()
 
     res.json({
       success: true,
-      data: {
-        id: users[userIndex].id,
-        firstName: users[userIndex].firstName,
-        lastName: users[userIndex].lastName,
-        email: users[userIndex].email,
-        phone: users[userIndex].phone,
-        role: users[userIndex].role,
-        createdAt: users[userIndex].createdAt
-      }
+      data: formatUserResponse(user.toObject())
     })
   } catch (error) {
     console.error('Update user error:', error)
@@ -105,16 +97,16 @@ export const updateUser = async (req, res) => {
 // @access  Private/Admin
 export const deleteUser = async (req, res) => {
   try {
-    const userIndex = users.findIndex(user => user.id === req.params.id)
+    const user = await User.findById(req.params.id)
     
-    if (userIndex === -1) {
+    if (!user) {
       return res.status(404).json({
         success: false,
         error: 'User not found'
       })
     }
 
-    users.splice(userIndex, 1)
+    await user.deleteOne()
 
     res.json({
       success: true,
@@ -143,9 +135,9 @@ export const updateProfile = async (req, res) => {
       })
     }
 
-    const userIndex = users.findIndex(user => user.id === req.user.id)
+    const user = await User.findById(req.user.id)
     
-    if (userIndex === -1) {
+    if (!user) {
       return res.status(404).json({
         success: false,
         error: 'User not found'
@@ -153,28 +145,19 @@ export const updateProfile = async (req, res) => {
     }
 
     // Update only allowed fields
-    const allowedFields = ['firstName', 'lastName', 'phone']
-    const updates = {}
+    const allowedFields = ['firstName', 'lastName', 'phone', 'dateOfBirth', 'address', 'city', 'state', 'zipCode', 'householdSize', 'annualIncome', 'employmentStatus', 'hasDisability', 'isVeteran', 'isStudent', 'numChildren']
     
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
-        updates[field] = req.body[field]
+        user[field] = req.body[field]
       }
     })
 
-    users[userIndex] = { ...users[userIndex], ...updates }
+    await user.save()
 
     res.json({
       success: true,
-      data: {
-        id: users[userIndex].id,
-        firstName: users[userIndex].firstName,
-        lastName: users[userIndex].lastName,
-        email: users[userIndex].email,
-        phone: users[userIndex].phone,
-        role: users[userIndex].role,
-        createdAt: users[userIndex].createdAt
-      }
+      data: formatUserResponse(user.toObject())
     })
   } catch (error) {
     console.error('Update profile error:', error)

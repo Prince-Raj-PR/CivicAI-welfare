@@ -193,7 +193,7 @@ programSchema.statics.searchPrograms = async function (query) {
 
 /**
  * Find programs that match a user profile from the eligibility check.
- * Filters by income, age, category, and state.
+ * Filters by income, age, category, state, student status, and disability.
  */
 programSchema.statics.findEligible = async function ({
   annualIncome,
@@ -204,37 +204,68 @@ programSchema.statics.findEligible = async function ({
   hasDisability,
 } = {}) {
   const query = { status: 'active' }
+  const andConditions = []
 
   if (annualIncome != null) {
-    query.$or = [
-      { 'eligibilityCriteria.maxIncome': { $gte: annualIncome } },
-      { 'eligibilityCriteria.maxIncome': { $exists: false } },
-      { 'eligibilityCriteria.maxIncome': null },
-    ]
+    andConditions.push({
+      $or: [
+        { 'eligibilityCriteria.maxIncome': { $gte: annualIncome } },
+        { 'eligibilityCriteria.maxIncome': { $exists: false } },
+        { 'eligibilityCriteria.maxIncome': null },
+      ]
+    })
   }
 
   if (age != null) {
-    query.$and = [
-      {
-        $or: [
-          { 'eligibilityCriteria.minAge': { $lte: age } },
-          { 'eligibilityCriteria.minAge': { $exists: false } },
-        ],
-      },
-      {
-        $or: [
-          { 'eligibilityCriteria.maxAge': { $gte: age } },
-          { 'eligibilityCriteria.maxAge': { $exists: false } },
-        ],
-      },
-    ]
+    andConditions.push({
+      $or: [
+        { 'eligibilityCriteria.minAge': { $lte: age } },
+        { 'eligibilityCriteria.minAge': { $exists: false } },
+      ],
+    })
+    andConditions.push({
+      $or: [
+        { 'eligibilityCriteria.maxAge': { $gte: age } },
+        { 'eligibilityCriteria.maxAge': { $exists: false } },
+      ],
+    })
   }
 
   if (state) {
-    query.$or = [
-      { state: 'All India' },
-      { state: new RegExp(state, 'i') },
-    ]
+    andConditions.push({
+      $or: [
+        { state: 'All India' },
+        { state: new RegExp(state, 'i') },
+      ]
+    })
+  }
+
+  if (category) {
+    andConditions.push({
+      category: new RegExp(category, 'i')
+    })
+  }
+
+  if (isStudent === true) {
+    andConditions.push({
+      $or: [
+        { 'eligibilityCriteria.requiresStudent': true },
+        { 'eligibilityCriteria.requiresStudent': { $exists: false } },
+      ]
+    })
+  }
+
+  if (hasDisability === true) {
+    andConditions.push({
+      $or: [
+        { 'eligibilityCriteria.requiresDisability': true },
+        { 'eligibilityCriteria.requiresDisability': { $exists: false } },
+      ]
+    })
+  }
+
+  if (andConditions.length > 0) {
+    query.$and = andConditions
   }
 
   return this.find(query).sort({ createdAt: -1 })
