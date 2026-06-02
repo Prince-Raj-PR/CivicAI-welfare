@@ -1,11 +1,92 @@
 [
   {
+    "source": "benefits_gov_home__www.benefits.gov.txt",
+    "status": "partial",
+    "parse_method": "json_direct",
+    "retries_used": 0,
+    "extracted_at": "2026-06-02T12:26:40.753107+00:00",
+    "error": null,
+    "scheme_name": ""
+  },
+  {
+    "source": "liheap_overview__liheap.txt",
+    "status": "ok",
+    "parse_method": "json_direct",
+    "retries_used": 0,
+    "extracted_at": "2026-06-02T12:26:42.646803+00:00",
+    "error": null,
+    "scheme_name": "Low Income Home Energy Assistance Program (LIHEAP)"
+  },
+  {
+    "source": "medicaid_eligibility_page__index.txt",
+    "status": "ok",
+    "parse_method": "json_direct",
+    "retries_used": 0,
+    "extracted_at": "2026-06-02T12:26:44.368363+00:00",
+    "error": null,
+    "scheme_name": "Medicaid"
+  },
+  {
+    "source": "myscheme_home__www.myscheme.gov.in.txt",
+    "status": "ok",
+    "parse_method": "json_direct",
+    "retries_used": 0,
+    "extracted_at": "2026-06-02T12:26:50.298997+00:00",
+    "error": null,
+    "scheme_name": "myScheme"
+  },
+  {
+    "source": "pmay_urban_about__about.txt",
+    "status": "ok",
+    "parse_method": "json_direct",
+    "retries_used": 0,
+    "extracted_at": "2026-06-02T12:27:02.507194+00:00",
+    "error": null,
+    "scheme_name": "PMAY-U 2.0"
+  },
+  {
+    "source": "pmay_urban_eligibility__Applicant_Login.txt",
+    "status": "ok",
+    "parse_method": "json_direct",
+    "retries_used": 0,
+    "extracted_at": "2026-06-02T12:27:24.701257+00:00",
+    "error": null,
+    "scheme_name": "Pradhan Mantri Awas Yojana - Urban 2.0"
+  },
+  {
+    "source": "pmkisan_home__pmkisan.gov.in.txt",
+    "status": "ok",
+    "parse_method": "json_direct",
+    "retries_used": 0,
+    "extracted_at": "2026-06-02T12:27:46.936659+00:00",
+    "error": null,
+    "scheme_name": "PM-Kisan Samman Nidhi"
+  },
+  {
+    "source": "poverty_guidelines__poverty-guidelines.txt",
+    "status": "ok",
+    "parse_method": "json_direct",
+    "retries_used": 0,
+    "extracted_at": "2026-06-02T12:28:10.781435+00:00",
+    "error": null,
+    "scheme_name": "Poverty Guidelines"
+  },
+  {
     "source": "sample_pmjay.txt",
     "status": "ok",
     "parse_method": "json_direct",
     "retries_used": 0,
-    "extracted_at": "2026-06-02T12:24:52.547561+00:00",
+    "extracted_at": "2026-06-02T12:28:29.682075+00:00",
     "error": null,
     "scheme_name": "PM-JAY Ayushman Bharat Scheme"
+  },
+  {
+    "source": "tanf_overview__tanf.txt",
+    "status": "ok",
+    "parse_method": "json_direct",
+    "retries_used": 0,
+    "extracted_at": "2026-06-02T12:28:36.502075+00:00",
+    "error": null,
+    "scheme_name": "Temporary Assistance for Needy Families (TANF)"
   }
 ]

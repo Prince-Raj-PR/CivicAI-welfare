@@ -1,0 +1,40 @@
+{
+  "source": "pmay_urban_eligibility__Applicant_Login.json",
+  "status": "repaired",
+  "repairs": [
+    "income_max 25000000 > 10 crore → set to null (implausible)",
+    "allowed_categories: unknown label 'LIG' dropped",
+    "allowed_categories: unknown label 'MIG' dropped"
+  ],
+  "errors": [],
+  "error": null,
+  "validated_at": "2026-06-02T12:28:52.260077+00:00",
+  "validated_data": {
+    "scheme_name": "Pradhan Mantri Awas Yojana - Urban 2.0",
+    "description": "Pradhan Mantri Awas Yojana - Urban 2.0 (PMAY-U 2.0) aims to provide Central Assistance to eligible families/beneficiaries through States/UTs/PLIs to construct, purchase or rent affordable houses in urban areas.",
+    "income_max": null,
+    "allowed_categories": [
+      "EWS",
+      "SC",
+      "ST",
+      "Minority",
+      "Women",
+      "Farmer",
+      "BPL",
+      "Disabled",
+      "Senior Citizen",
+      "Student"
+    ],
+    "age_min": null,
+    "age_max": null,
+    "student_required": false,
+    "disability_required": false,
+    "state": "All India",
+    "benefit": "Financial Assistance to construct, purchase or rent a house at an affordable cost in cities.",
+    "required_documents": [
+      "Aadhaar card",
+      "Income certificate"
+    ],
+    "application_process": "Eligible families/beneficiaries can apply for PMAY-U 2.0 through States/UTs/PLIs. The application process involves submitting required documents and meeting the eligibility criteria."
+  }
+}

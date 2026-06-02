@@ -6,7 +6,7 @@
     "required_documents: ['Aadhaar card', 'Ration card', 'SECC registration proof'] → ['Aadhaar Card', 'Ration Card', 'SECC 2011 Registration Proof']"
   ],
   "error": null,
-  "normalized_at": "2026-06-02T12:24:54.368362+00:00",
+  "normalized_at": "2026-06-02T12:28:52.269120+00:00",
   "normalized_data": {
     "scheme_name": "PM-JAY Ayushman Bharat Scheme",
     "description": "Pradhan Mantri Jan Arogya Yojana (PM-JAY) provides health coverage to economically vulnerable families.",

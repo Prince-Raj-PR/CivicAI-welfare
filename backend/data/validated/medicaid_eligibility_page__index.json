@@ -1,0 +1,22 @@
+{
+  "source": "medicaid_eligibility_page__index.json",
+  "status": "valid",
+  "repairs": [],
+  "errors": [],
+  "error": null,
+  "validated_at": "2026-06-02T12:28:52.258106+00:00",
+  "validated_data": {
+    "scheme_name": "Medicaid",
+    "description": "A joint federal-state program that provides health insurance coverage to low-income individuals and families.",
+    "income_max": null,
+    "allowed_categories": [],
+    "age_min": null,
+    "age_max": null,
+    "student_required": false,
+    "disability_required": false,
+    "state": "All India",
+    "benefit": "Health insurance coverage",
+    "required_documents": [],
+    "application_process": "Eligibility is determined through an application process, which can be completed online, by phone, or in person. Required documents may include proof of income, residency, and citizenship."
+  }
+}

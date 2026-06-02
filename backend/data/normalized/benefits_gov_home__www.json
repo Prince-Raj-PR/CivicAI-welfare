@@ -1,0 +1,23 @@
+{
+  "source": "benefits_gov_home__www.benefits.json",
+  "status": "ok",
+  "changes": [
+    "scheme_name: 'Benefits Gov Home  Www.Benefits.Gov' → 'Benefits Gov Home Www.Benefits.Gov'"
+  ],
+  "error": null,
+  "normalized_at": "2026-06-02T12:28:52.265470+00:00",
+  "normalized_data": {
+    "scheme_name": "Benefits Gov Home Www.Benefits.Gov",
+    "description": "This is not an Indian government welfare scheme.",
+    "income_max": null,
+    "allowed_categories": [],
+    "age_min": null,
+    "age_max": null,
+    "student_required": false,
+    "disability_required": false,
+    "state": "All India",
+    "benefit": "",
+    "required_documents": [],
+    "application_process": ""
+  }
+}

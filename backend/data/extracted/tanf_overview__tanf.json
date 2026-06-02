@@ -1,0 +1,22 @@
+{
+  "source": "tanf_overview__tanf.txt",
+  "status": "ok",
+  "parse_method": "json_direct",
+  "retries_used": 0,
+  "extracted_at": "2026-06-02T12:28:36.502075+00:00",
+  "error": null,
+  "scheme_data": {
+    "scheme_name": "Temporary Assistance for Needy Families (TANF)",
+    "description": "The Temporary Assistance for Needy Families (TANF) program is designed to help families with children experiencing low-income achieve economic security and stability.",
+    "income_max": null,
+    "allowed_categories": [],
+    "age_min": null,
+    "age_max": null,
+    "student_required": false,
+    "disability_required": false,
+    "state": "All India",
+    "benefit": "Economic security and stability",
+    "required_documents": [],
+    "application_process": "States receive block grants to design and operate programs that accomplish one of the purposes of the TANF program."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "source": "poverty_guidelines__poverty-guidelines.json",
+  "status": "valid",
+  "repairs": [],
+  "errors": [],
+  "error": null,
+  "validated_at": "2026-06-02T12:28:52.260947+00:00",
+  "validated_data": {
+    "scheme_name": "Poverty Guidelines",
+    "description": "The poverty guidelines are used to determine financial eligibility for certain programs.",
+    "income_max": null,
+    "allowed_categories": [],
+    "age_min": null,
+    "age_max": null,
+    "student_required": false,
+    "disability_required": false,
+    "state": "All India",
+    "benefit": "Financial assistance",
+    "required_documents": [],
+    "application_process": "The poverty guidelines are used to determine eligibility for certain programs. No application process is required."
+  }
+}

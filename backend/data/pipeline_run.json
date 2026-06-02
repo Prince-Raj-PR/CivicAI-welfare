@@ -1,7 +1,7 @@
 {
-  "run_id": "20260602_122452",
-  "started_at": "2026-06-02T12:24:52.022130+00:00",
-  "finished_at": "2026-06-02T12:24:54.370186+00:00",
+  "run_id": "20260602_122640",
+  "started_at": "2026-06-02T12:26:40.315318+00:00",
+  "finished_at": "2026-06-02T12:28:52.271123+00:00",
   "status": "ok",
   "stages": [
     {
@@ -33,40 +33,40 @@
     {
       "stage": 3,
       "name": "text_cleaner",
-      "status": "skipped",
-      "items_in": 0,
-      "items_out": 0,
+      "status": "ok",
+      "items_in": 9,
+      "items_out": 9,
       "items_fail": 0,
-      "duration_s": 0.0,
+      "duration_s": 0.0429908340156544,
       "error": null,
       "notes": [
-        "No .txt files in /Users/princeraj/Desktop/CIVICAI/backend/data/parsed"
+        "0 empty after cleaning"
       ]
     },
     {
       "stage": 4,
       "name": "extractor",
       "status": "ok",
-      "items_in": 1,
-      "items_out": 1,
+      "items_in": 10,
+      "items_out": 10,
       "items_fail": 0,
-      "duration_s": 2.3227182909904514,
+      "duration_s": 131.87231604199042,
       "error": null,
       "notes": [
-        "0 partial extractions"
+        "1 partial extractions"
       ]
     },
     {
       "stage": 5,
       "name": "validator",
       "status": "ok",
-      "items_in": 1,
-      "items_out": 1,
+      "items_in": 10,
+      "items_out": 10,
       "items_fail": 0,
-      "duration_s": 0.010553874977631494,
+      "duration_s": 0.033389124990208074,
       "error": null,
       "notes": [
-        "0 auto-repaired",
+        "3 auto-repaired",
         "0 rejected"
       ]
     },
@@ -74,18 +74,18 @@
       "stage": 6,
       "name": "normalizer",
       "status": "ok",
-      "items_in": 1,
-      "items_out": 1,
+      "items_in": 10,
+      "items_out": 10,
       "items_fail": 0,
-      "duration_s": 0.004189833009149879,
+      "duration_s": 0.007314916991163045,
       "error": null,
       "notes": [
-        "2 field normalizations applied",
+        "10 field normalizations applied",
         "0 skipped"
       ]
     }
   ],
-  "schemes_out": 1,
-  "log_file": "/Users/princeraj/Desktop/CIVICAI/backend/data/raw/logs/pipeline_20260602_122452.log",
+  "schemes_out": 10,
+  "log_file": "/Users/princeraj/Desktop/CIVICAI/backend/data/raw/logs/pipeline_20260602_122640.log",
   "error": null
 }
