@@ -1,0 +1,20 @@
+{
+  "source": "pmay_urban_about__about.txt",
+  "status": "ok",
+  "original_chars": 21688,
+  "cleaned_chars": 19796,
+  "original_words": 3091,
+  "cleaned_words": 2837,
+  "removed_chars": 1892,
+  "stages_applied": [
+    "strip_page_markers",
+    "remove_page_numbers",
+    "remove_headers_footers",
+    "remove_boilerplate",
+    "normalize_unicode",
+    "normalize_whitespace",
+    "deduplicate_paragraphs"
+  ],
+  "error": null,
+  "cleaned_at": "2026-06-02T12:26:40.335935+00:00"
+}

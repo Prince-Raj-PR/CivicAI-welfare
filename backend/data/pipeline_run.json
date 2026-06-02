@@ -1,7 +1,7 @@
 {
-  "run_id": "20260525_074437",
-  "started_at": "2026-05-25T07:44:37.463774+00:00",
-  "finished_at": "2026-05-25T07:44:37.467555+00:00",
+  "run_id": "20260602_122452",
+  "started_at": "2026-06-02T12:24:52.022130+00:00",
+  "finished_at": "2026-06-02T12:24:54.370186+00:00",
   "status": "ok",
   "stages": [
     {
@@ -40,33 +40,34 @@
       "duration_s": 0.0,
       "error": null,
       "notes": [
-        "skipped by from_stage"
+        "No .txt files in /Users/princeraj/Desktop/CIVICAI/backend/data/parsed"
       ]
     },
     {
       "stage": 4,
       "name": "extractor",
-      "status": "skipped",
-      "items_in": 0,
-      "items_out": 0,
+      "status": "ok",
+      "items_in": 1,
+      "items_out": 1,
       "items_fail": 0,
-      "duration_s": 0.0,
+      "duration_s": 2.3227182909904514,
       "error": null,
       "notes": [
-        "skipped by flag/from_stage"
+        "0 partial extractions"
       ]
     },
     {
       "stage": 5,
       "name": "validator",
-      "status": "skipped",
-      "items_in": 0,
-      "items_out": 0,
+      "status": "ok",
+      "items_in": 1,
+      "items_out": 1,
       "items_fail": 0,
-      "duration_s": 0.0,
+      "duration_s": 0.010553874977631494,
       "error": null,
       "notes": [
-        "skipped by from_stage"
+        "0 auto-repaired",
+        "0 rejected"
       ]
     },
     {
@@ -76,7 +77,7 @@
       "items_in": 1,
       "items_out": 1,
       "items_fail": 0,
-      "duration_s": 0.0028162080016045365,
+      "duration_s": 0.004189833009149879,
       "error": null,
       "notes": [
         "2 field normalizations applied",
@@ -85,6 +86,6 @@
     }
   ],
   "schemes_out": 1,
-  "log_file": "/Users/princeraj/Desktop/CIVICAI/backend/data/raw/logs/pipeline_20260525_074437.log",
+  "log_file": "/Users/princeraj/Desktop/CIVICAI/backend/data/raw/logs/pipeline_20260602_122452.log",
   "error": null
 }

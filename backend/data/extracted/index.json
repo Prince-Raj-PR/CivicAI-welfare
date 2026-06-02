@@ -1,0 +1,11 @@
+[
+  {
+    "source": "sample_pmjay.txt",
+    "status": "ok",
+    "parse_method": "json_direct",
+    "retries_used": 0,
+    "extracted_at": "2026-06-02T12:24:52.547561+00:00",
+    "error": null,
+    "scheme_name": "PM-JAY Ayushman Bharat Scheme"
+  }
+]

@@ -1,0 +1,20 @@
+{
+  "source": "myscheme_home__www.myscheme.gov.in.txt",
+  "status": "ok",
+  "original_chars": 3222,
+  "cleaned_chars": 2993,
+  "original_words": 495,
+  "cleaned_words": 471,
+  "removed_chars": 229,
+  "stages_applied": [
+    "strip_page_markers",
+    "remove_page_numbers",
+    "remove_headers_footers",
+    "remove_boilerplate",
+    "normalize_unicode",
+    "normalize_whitespace",
+    "deduplicate_paragraphs"
+  ],
+  "error": null,
+  "cleaned_at": "2026-06-02T12:26:40.334538+00:00"
+}

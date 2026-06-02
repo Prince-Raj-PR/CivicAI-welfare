@@ -6,10 +6,10 @@
     "required_documents: ['Aadhaar card', 'Ration card', 'SECC registration proof'] → ['Aadhaar Card', 'Ration Card', 'SECC 2011 Registration Proof']"
   ],
   "error": null,
-  "normalized_at": "2026-05-25T07:44:37.466568+00:00",
+  "normalized_at": "2026-06-02T12:24:54.368362+00:00",
   "normalized_data": {
     "scheme_name": "PM-JAY Ayushman Bharat Scheme",
-    "description": "Pradhan Mantri Jan Arogya Yojana (PM-JAY) provides health coverage of Rs. 5 lakh per family per year to economically vulnerable families listed in SECC 2011.",
+    "description": "Pradhan Mantri Jan Arogya Yojana (PM-JAY) provides health coverage to economically vulnerable families.",
     "income_max": 250000,
     "allowed_categories": [
       "Below Poverty Line (BPL)",

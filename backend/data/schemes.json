@@ -1,7 +1,7 @@
 [
   {
     "scheme_name": "PM-JAY Ayushman Bharat Scheme",
-    "description": "Pradhan Mantri Jan Arogya Yojana (PM-JAY) provides health coverage of Rs. 5 lakh per family per year to economically vulnerable families listed in SECC 2011.",
+    "description": "Pradhan Mantri Jan Arogya Yojana (PM-JAY) provides health coverage to economically vulnerable families.",
     "income_max": 250000,
     "allowed_categories": [
       "Below Poverty Line (BPL)",
@@ -23,6 +23,6 @@
     ],
     "application_process": "Visit nearest Ayushman Mitra at empanelled hospital with Aadhaar card.",
     "_source": "sample_pmjay",
-    "_pipeline_run": "20260525_074437"
+    "_pipeline_run": "20260602_122452"
   }
 ]
