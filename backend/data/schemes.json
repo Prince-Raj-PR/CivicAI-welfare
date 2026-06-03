@@ -1,53 +1,5 @@
 [
   {
-    "scheme_name": "Benefits Gov Home Www.Benefits.Gov",
-    "description": "This is not an Indian government welfare scheme.",
-    "income_max": null,
-    "allowed_categories": [],
-    "age_min": null,
-    "age_max": null,
-    "student_required": false,
-    "disability_required": false,
-    "state": "All India",
-    "benefit": "",
-    "required_documents": [],
-    "application_process": "",
-    "_source": "benefits_gov_home__www",
-    "_pipeline_run": "20260602_122640"
-  },
-  {
-    "scheme_name": "Low Income Home Energy Assistance Program (LIHEAP)",
-    "description": "The Low Income Home Energy Assistance Program (LIHEAP) helps keep families safe and healthy through initiatives that assist families with energy costs.",
-    "income_max": null,
-    "allowed_categories": [],
-    "age_min": null,
-    "age_max": null,
-    "student_required": false,
-    "disability_required": false,
-    "state": "All India",
-    "benefit": "Assistance with home energy bills, energy crises, weatherization, and minor energy-related home repairs.",
-    "required_documents": [],
-    "application_process": "For information on how to apply for energy assistance, please visit Energyhelp.us.",
-    "_source": "liheap_overview__liheap",
-    "_pipeline_run": "20260602_122640"
-  },
-  {
-    "scheme_name": "Medicaid",
-    "description": "A joint federal-state program that provides health insurance coverage to low-income individuals and families.",
-    "income_max": null,
-    "allowed_categories": [],
-    "age_min": null,
-    "age_max": null,
-    "student_required": false,
-    "disability_required": false,
-    "state": "All India",
-    "benefit": "Health insurance coverage",
-    "required_documents": [],
-    "application_process": "Eligibility is determined through an application process, which can be completed online, by phone, or in person. Required documents may include proof of income, residency, and citizenship.",
-    "_source": "medicaid_eligibility_page__index",
-    "_pipeline_run": "20260602_122640"
-  },
-  {
     "scheme_name": "myScheme",
     "description": "MyScheme is a National Platform that aims to offer one-stop search and discovery of the Government schemes.",
     "income_max": null,
@@ -143,22 +95,6 @@
     "_pipeline_run": "20260602_122640"
   },
   {
-    "scheme_name": "Poverty Guidelines",
-    "description": "The poverty guidelines are used to determine financial eligibility for certain programs.",
-    "income_max": null,
-    "allowed_categories": [],
-    "age_min": null,
-    "age_max": null,
-    "student_required": false,
-    "disability_required": false,
-    "state": "All India",
-    "benefit": "Financial assistance",
-    "required_documents": [],
-    "application_process": "The poverty guidelines are used to determine eligibility for certain programs. No application process is required.",
-    "_source": "poverty_guidelines__poverty-guidelines",
-    "_pipeline_run": "20260602_122640"
-  },
-  {
     "scheme_name": "PM-JAY Ayushman Bharat Scheme",
     "description": "Pradhan Mantri Jan Arogya Yojana (PM-JAY) provides health coverage to economically vulnerable families.",
     "income_max": 250000,
@@ -182,22 +118,6 @@
     ],
     "application_process": "Visit nearest Ayushman Mitra at empanelled hospital with Aadhaar card.",
     "_source": "sample_pmjay",
-    "_pipeline_run": "20260602_122640"
-  },
-  {
-    "scheme_name": "Temporary Assistance for Needy Families (TANF)",
-    "description": "The Temporary Assistance for Needy Families (TANF) program is designed to help families with children experiencing low-income achieve economic security and stability.",
-    "income_max": null,
-    "allowed_categories": [],
-    "age_min": null,
-    "age_max": null,
-    "student_required": false,
-    "disability_required": false,
-    "state": "All India",
-    "benefit": "Economic security and stability",
-    "required_documents": [],
-    "application_process": "States receive block grants to design and operate programs that accomplish one of the purposes of the TANF program.",
-    "_source": "tanf_overview__tanf",
     "_pipeline_run": "20260602_122640"
   }
 ]
