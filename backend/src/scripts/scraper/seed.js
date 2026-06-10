@@ -32,7 +32,7 @@ const CLEAR_EXISTING = args.includes('--clear')
 const DRY_RUN = args.includes('--dry-run')
 const NO_API = args.includes('--no-api')
 const pagesArg = args.find((a) => a.startsWith('--pages'))
-const MY_SCHEME_MAX_PAGES = pagesArg ? parseInt(pagesArg.split('=')[1] || args[args.indexOf(pagesArg) + 1], 10) : 10
+const MY_SCHEME_MAX_PAGES = pagesArg ? parseInt(pagesArg.split('=')[1] || args[args.indexOf(pagesArg) + 1], 10) : 400
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

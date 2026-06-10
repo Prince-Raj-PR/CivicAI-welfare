@@ -1,200 +1,194 @@
+/**
+ * myScheme.gov.in scraper
+ * Reverse-engineered from the Next.js app bundle.
+ *
+ * Endpoint : GET https://api.myscheme.gov.in/search/v4/schemes
+ * Auth     : x-api-key (static, embedded in public JS bundle)
+ * Total    : ~3,726 schemes (central + all states)
+ *
+ * Pagination quirks discovered through testing:
+ *   - `offset` param is ignored — always returns page 0
+ *   - `from`   param works correctly for pagination (0, 10, 20, …)
+ *   - `limit`  param is ignored — always returns 10 items per request
+ */
+
 import axios from 'axios'
 
-const BASE_URL = 'https://www.myscheme.gov.in'
-const API_BASE = `${BASE_URL}/api/v1`
-
-// Polite delay between requests (ms)
-const DELAY_MS = 800
+const API_URL = 'https://api.myscheme.gov.in/search/v4/schemes'
+const API_KEY = 'tYTy5eEhlu9rFjyxuCr7ra7ACp4dv1RH8gWuHTDc'
+const PAGE_SIZE = 10   // actual items returned per request (fixed by API)
+const DELAY_MS  = 300
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-/**
- * Map a raw myScheme API record → Program model shape
- */
-function mapToProgram(raw) {
-  // Extract benefit amount hint from benefit text
-  const benefitText = raw.benefits || raw.benefit_description || ''
+const HEADERS = {
+  'x-api-key':       API_KEY,
+  'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept':          'application/json, text/plain, */*',
+  'Origin':          'https://www.myscheme.gov.in',
+  'Referer':         'https://www.myscheme.gov.in/search',
+}
 
-  // Determine type from tags/category
-  const type = inferType(raw.tags || [], raw.ministry || '', raw.name || '')
+// ── Category → Program.type ──────────────────────────────────────────────────
+const CATEGORY_MAP = {
+  'Agriculture,Rural & Environment':           'Financial Aid',
+  'Agriculture, Rural & Environment':          'Financial Aid',
+  'Education & Learning':                      'Education',
+  'Health & Wellness':                         'Healthcare',
+  'Housing & Shelter':                         'Housing',
+  'Skills & Employment':                       'Employment',
+  'Social welfare & Empowerment':              'Financial Aid',
+  'Banking, Financial Services & Insurance':   'Financial Aid',
+  'Science, IT & Communication':               'Education',
+  'Sports & Culture':                          'Other',
+  'Travel & Tourism':                          'Other',
+  'Transport & Infrastructure':                'Other',
+  'Utility & Sanitation':                      'Other',
+  'Business & Entrepreneurship':               'Financial Aid',
+  'Public Safety, Law & Justice':              'Other',
+  'Tax & Revenue':                             'Financial Aid',
+}
 
-  // Build eligibility criteria
-  const eligibility = {
-    minAge: raw.min_age ?? raw.eligibility?.min_age ?? null,
-    maxAge: raw.max_age ?? raw.eligibility?.max_age ?? null,
-    maxIncome: parseIncome(raw.income_limit ?? raw.eligibility?.income_limit),
-    allowedCategories: normalizeCategories(
-      raw.beneficiary_categories ?? raw.target_beneficiaries ?? []
-    ),
-    requiredDocuments: Array.isArray(raw.documents_required)
-      ? raw.documents_required
-      : [],
-    studentRequired: raw.student_required ?? null,
-    disabilityRequired: raw.disability_required ?? null,
+function inferType(categories = [], name = '') {
+  for (const cat of categories) {
+    const t = CATEGORY_MAP[cat.trim()]
+    if (t) return t
   }
+  const n = name.toLowerCase()
+  if (/health|medical|hospital|ayushman|nha/.test(n))         return 'Healthcare'
+  if (/hous|awas|shelter/.test(n))                            return 'Housing'
+  if (/food|ration|anna|grain|nutrition/.test(n))             return 'Food Assistance'
+  if (/educat|school|scholar|student|training|skill/.test(n)) return 'Education'
+  if (/employ|job|rozgar|mgnrega|labour|labor/.test(n))       return 'Employment'
+  if (/pension|senior|elderly|old.?age/.test(n))              return 'Seniors'
+  if (/disab|divyang/.test(n))                                return 'Disability'
+  return 'Financial Aid'
+}
+
+function inferAgeRange(ageField) {
+  if (!ageField || typeof ageField !== 'object') return { minAge: null, maxAge: null }
+  let min = Infinity, max = -Infinity
+  for (const v of Object.values(ageField)) {
+    if (v?.gte != null && v.gte < min) min = v.gte
+    if (v?.lte != null && v.lte > max) max = v.lte
+  }
+  return {
+    minAge: min === Infinity  || min <= 0   ? null : min,
+    maxAge: max === -Infinity || max >= 100 ? null : max,
+  }
+}
+
+function mapItem(item) {
+  const f    = item.fields || {}
+  const name = (f.schemeName || '').trim()
+  if (!name) return null
+
+  const slug       = f.slug || item.id
+  const level      = f.level || 'Central'
+  const stateRaw   = f.beneficiaryState?.[0] ?? 'All'
+  const state      = (!stateRaw || stateRaw === 'All') ? 'All India' : stateRaw
+  const categories = f.schemeCategory || []
+  const ministry   = f.nodalMinistryName || 'Government of India'
+  const tags       = f.tags || []
+  const { minAge, maxAge } = inferAgeRange(f.age)
 
   return {
-    name: raw.name || raw.scheme_name || '',
-    description: raw.description || raw.short_description || '',
-    type,
-    agency: raw.ministry || raw.department || raw.nodal_ministry || 'Government of India',
-    location: 'Nationwide',
-    state: normalizeState(raw.state ?? raw.scheme_type),
-    eligibilityCriteria: eligibility,
-    benefits: {
-      type: 'other',
-      description: benefitText,
+    name,
+    description: (f.briefDescription || '').trim(),
+    type:        inferType(categories, name),
+    agency:      ministry,
+    location:    state === 'All India' ? 'Nationwide' : state,
+    state,
+    eligibilityCriteria: {
+      minAge, maxAge,
+      maxIncome:          null,
+      allowedCategories:  [],
+      requiredDocuments:  [],
+      studentRequired:    null,
+      disabilityRequired: null,
     },
+    benefits: { type: 'other', description: '' },
     applicationProcess: {
-      url: raw.apply_url || raw.application_url || '',
-      steps: raw.application_process
-        ? [raw.application_process]
-        : [],
+      url:   `https://www.myscheme.gov.in/schemes/${slug}`,
+      steps: [],
     },
-    tags: Array.isArray(raw.tags) ? raw.tags : [],
-    status: 'active',
-    source: 'ai-pipeline',
+    tags:           [...new Set([...tags.map(t => t.toLowerCase()), level.toLowerCase()])],
+    status:         'active',
+    source:         'ai-pipeline',
     pipelineSource: 'myscheme-api',
   }
 }
 
-function inferType(tags, ministry, name) {
-  const combined = [...tags, ministry, name].join(' ').toLowerCase()
-
-  if (/health|medical|hospital|ayushman|pm.?jay/.test(combined)) return 'Healthcare'
-  if (/food|ration|anna|grain|nutrition/.test(combined)) return 'Food Assistance'
-  if (/hous|awas|shelter|dwelling/.test(combined)) return 'Housing'
-  if (/educat|school|scholar|student|college|skill|training/.test(combined)) return 'Education'
-  if (/employ|job|work|labour|labor|mgnrega|nrega/.test(combined)) return 'Employment'
-  if (/pension|retire|senior|elderly|old.age/.test(combined)) return 'Seniors'
-  if (/disab|divyang|pwd/.test(combined)) return 'Disability'
-  if (/veteran|ex.servicem|armed.force/.test(combined)) return 'Veterans'
-  if (/child|infant|maternity|prenatal/.test(combined)) return 'Childcare'
-  return 'Financial Aid'
-}
-
-function parseIncome(raw) {
-  if (raw == null) return null
-  if (typeof raw === 'number') return raw > 0 ? raw : null
-
-  const s = String(raw).replace(/,/g, '').toLowerCase().trim()
-  if (!s || ['null', 'n/a', 'no limit', 'unlimited', 'none'].includes(s)) return null
-
-  const m = s.match(/([\d.]+)\s*(crore|lakh|lac|thousand|k)?/)
-  if (!m) return null
-
-  let val = parseFloat(m[1])
-  const unit = m[2] || ''
-
-  if (unit.startsWith('crore')) val *= 10_000_000
-  else if (unit.startsWith('lakh') || unit.startsWith('lac')) val *= 100_000
-  else if (unit.startsWith('thousand') || unit === 'k') val *= 1_000
-
-  return val > 0 && val <= 10_000_000 ? Math.round(val) : null
-}
-
-function normalizeCategories(raw) {
-  if (!Array.isArray(raw)) return []
-  return raw.map((c) => String(c).trim()).filter(Boolean)
-}
-
-function normalizeState(raw) {
-  if (!raw || /central|national|all/i.test(raw)) return 'All India'
-  return String(raw).trim()
-}
-
-/**
- * Fetch one page of schemes from the API
- */
-async function fetchPage(page, limit = 50) {
-  const url = `${API_BASE}/schemes?page=${page}&limit=${limit}`
-  const response = await axios.get(url, {
-    timeout: 15000,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; CivicAI/1.0)',
-      Accept: 'application/json',
-    },
+async function fetchPage(from) {
+  const res = await axios.get(API_URL, {
+    params: { lang: 'en', keyword: '', limit: 10, offset: 0, from, sort: 'schemename-asc' },
+    headers: HEADERS,
+    timeout: 20000,
   })
-  return response.data
+  const items = res.data?.data?.hits?.items ?? []
+  const total = res.data?.data?.summary?.total ?? 0
+  return { items, total }
 }
 
 /**
- * Fetch full detail for one scheme slug
- */
-async function fetchDetail(slug) {
-  try {
-    const url = `${API_BASE}/scheme/${slug}`
-    const response = await axios.get(url, {
-      timeout: 15000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; CivicAI/1.0)',
-        Accept: 'application/json',
-      },
-    })
-    return response.data
-  } catch {
-    return null
-  }
-}
-
-/**
- * Main scrape function — returns array of mapped Program objects
+ * Scrape all schemes from myScheme.gov.in.
  *
- * @param {object} opts
- * @param {number} opts.maxPages - max pages to fetch (default: 20 = 1000 schemes)
- * @param {number} opts.limit    - schemes per page (default: 50)
- * @param {function} opts.log    - logger function
+ * @param {object}   opts
+ * @param {number}   opts.maxPages  - max requests (default 400 covers all 3,726 at 10/req)
+ * @param {function} opts.log
  */
-export async function scrape({ maxPages = 20, limit = 50, log = console.log } = {}) {
-  log(`[myscheme] Starting — max ${maxPages} pages × ${limit} per page`)
+export async function scrape({ maxPages = 400, log = console.log } = {}) {
+  log('[myscheme] Starting — authenticated API (~3,726 schemes)')
 
   const programs = []
-  let page = 1
-  let totalFetched = 0
+  const seenIds  = new Set()
+  let from       = 0
+  let total      = null
+  let page       = 0
 
-  while (page <= maxPages) {
+  while (page < maxPages) {
     try {
-      log(`[myscheme] Fetching page ${page}/${maxPages}…`)
-      const data = await fetchPage(page, limit)
+      const { items, total: t } = await fetchPage(from)
 
-      // Handle both { schemes: [] } and { data: [] } response shapes
-      const items =
-        data?.schemes ?? data?.data ?? data?.results ?? (Array.isArray(data) ? data : [])
+      if (total === null) {
+        total = t
+        const pages = Math.ceil(total / PAGE_SIZE)
+        log(`[myscheme] ${total} schemes, ${pages} pages at ${PAGE_SIZE}/page`)
+      }
 
       if (!items.length) {
-        log(`[myscheme] Empty page ${page} — stopping`)
+        log('[myscheme] Empty page — done')
         break
       }
 
+      let added = 0
       for (const item of items) {
-        // Optionally fetch full detail if list item is sparse
-        let detail = item
-        if (item.slug && !item.description) {
-          detail = (await fetchDetail(item.slug)) ?? item
-          await sleep(DELAY_MS / 2)
-        }
-
-        const mapped = mapToProgram(detail)
-        if (mapped.name) programs.push(mapped)
-        totalFetched++
+        if (seenIds.has(item.id)) continue
+        seenIds.add(item.id)
+        const mapped = mapItem(item)
+        if (mapped) { programs.push(mapped); added++ }
       }
 
-      log(`[myscheme] Page ${page} → ${items.length} schemes (total: ${totalFetched})`)
-
-      // Check if there are more pages
-      const totalPages = data?.total_pages ?? data?.totalPages ?? null
-      if (totalPages && page >= totalPages) break
-
+      from += PAGE_SIZE
       page++
+
+      if (page % 50 === 0) {
+        log(`[myscheme] ${programs.length}/${total} fetched (page ${page})`)
+      }
+
+      if (from >= total) {
+        log(`[myscheme] All ${programs.length} schemes fetched`)
+        break
+      }
+
       await sleep(DELAY_MS)
     } catch (err) {
-      log(`[myscheme] Page ${page} error: ${err.message}`)
-      // If first page fails, the API shape may be different — stop
-      if (page === 1) throw err
+      log(`[myscheme] Error at page ${page + 1} (from=${from}): ${err.message}`)
+      if (page === 0) throw err
       break
     }
   }
 
-  log(`[myscheme] Done — ${programs.length} programs mapped`)
+  log(`[myscheme] Done — ${programs.length} unique programs`)
   return programs
 }

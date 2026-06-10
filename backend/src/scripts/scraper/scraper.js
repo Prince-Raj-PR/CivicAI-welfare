@@ -16,7 +16,12 @@
  *   const programs = await runScraper({ useMySchemeAPI: true })
  */
 
-import { scrape as scrapeMyScheme } from './sources/myscheme.js'
+import { scrape as scrapeMySchemeRaw } from './sources/myscheme.js'
+
+// myscheme.js uses maxPages as raw API request count (10 schemes/request).
+// Pass through directly — admin UI sets pages=400 for full scrape.
+const scrapeMyScheme = ({ maxPages, log }) =>
+  scrapeMySchemeRaw({ maxPages, log })
 import { scrape as scrapePmjay } from './sources/pmjay.js'
 import { scrape as scrapePmkisan } from './sources/pmkisan.js'
 import { scrape as scrapePmay } from './sources/pmay.js'
@@ -57,7 +62,7 @@ function deduplicateByName(programs) {
  */
 export async function runScraper({
   useMySchemeAPI = true,
-  mySchemeMaxPages = 10,
+  mySchemeMaxPages = 75,
   verbose = true,
 } = {}) {
   const log = verbose ? console.log : () => {}

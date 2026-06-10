@@ -27,7 +27,7 @@ function ScraperPanel({ onScrapeDone }) {
   const [options, setOptions] = useState({
     clear: false,
     useMySchemeAPI: true,
-    pages: 10,
+    pages: 400,
   })
   const logsEndRef = useRef(null)
   const esRef = useRef(null)
@@ -214,7 +214,7 @@ function ScraperPanel({ onScrapeDone }) {
             />
             <span className="text-gray-700">
               Include myScheme.gov.in API
-              <span className="ml-1 text-gray-400">(3000+ central & state schemes)</span>
+              <span className="ml-1 text-gray-400">(3,700+ central & state schemes)</span>
             </span>
           </label>
 
@@ -225,13 +225,13 @@ function ScraperPanel({ onScrapeDone }) {
               <input
                 type="number"
                 min={1}
-                max={60}
+                max={400}
                 value={options.pages}
-                onChange={(e) => setOptions((o) => ({ ...o, pages: parseInt(e.target.value, 10) || 10 }))}
+                onChange={(e) => setOptions((o) => ({ ...o, pages: parseInt(e.target.value, 10) || 400 }))}
                 disabled={running}
-                className="w-16 border border-gray-300 rounded px-2 py-1 text-sm"
+                className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
               />
-              <span className="text-gray-400">× 50 schemes/page</span>
+              <span className="text-gray-400">pages (400 = all ~3,726 schemes)</span>
             </label>
           )}
 
