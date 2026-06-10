@@ -3,11 +3,16 @@ import jwt from 'jsonwebtoken'
 export const protect = async (req, res, next) => {
   let token
 
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      // Get token from header
-      token = req.headers.authorization.split(' ')[1]
+  // SSE streams use EventSource which cannot set custom headers,
+  // so we also accept the token as a query param (?token=...)
+  if (req.query.token) {
+    token = req.query.token
+  } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1]
+  }
 
+  if (token) {
+    try {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
@@ -18,7 +23,7 @@ export const protect = async (req, res, next) => {
         role: decoded.role
       }
 
-      next()
+      return next()
     } catch (error) {
       console.error('Token verification failed:', error)
       return res.status(401).json({
@@ -28,12 +33,10 @@ export const protect = async (req, res, next) => {
     }
   }
 
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      error: 'Not authorized, no token'
-    })
-  }
+  return res.status(401).json({
+    success: false,
+    error: 'Not authorized, no token'
+  })
 }
 
 export const authorize = (...roles) => {
