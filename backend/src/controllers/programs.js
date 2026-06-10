@@ -6,47 +6,52 @@ import Program from '../models/Program.js'
 // @access  Public
 export const getPrograms = async (req, res) => {
   try {
-    const { page = 1, limit = 10, type, agency, status = 'active' } = req.query
-    
+    const { page = 1, limit = 20, type, agency, status = 'active', state, search } = req.query
+
     // Build query
     const query = { status }
-    
-    // Filter by type
-    if (type) {
-      query.type = new RegExp(type, 'i')
+
+    if (type)   query.type   = new RegExp(type, 'i')
+    if (agency) query.agency = new RegExp(agency, 'i')
+    if (state)  query.state  = new RegExp(state, 'i')
+
+    // Optional keyword search across name + description
+    if (search) {
+      query.$or = [
+        { name:        new RegExp(search, 'i') },
+        { description: new RegExp(search, 'i') },
+        { tags:        new RegExp(search, 'i') },
+      ]
     }
-    
-    // Filter by agency
-    if (agency) {
-      query.agency = new RegExp(agency, 'i')
-    }
-    
-    // Execute query with pagination
-    const programs = await Program.find(query)
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .sort({ createdAt: -1 })
-    
-    // Get total count
-    const total = await Program.countDocuments(query)
-    
+
+    const pageNum  = Math.max(1, parseInt(page,  10))
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)))
+    const skip     = (pageNum - 1) * limitNum
+
+    const [programs, total] = await Promise.all([
+      Program.find(query)
+        .select('-__v')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      Program.countDocuments(query),
+    ])
+
     res.json({
       success: true,
-      count: programs.length,
+      count:  programs.length,
       total,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(total / parseInt(limit))
+        page:   pageNum,
+        limit:  limitNum,
+        pages:  Math.ceil(total / limitNum),
+        hasMore: pageNum * limitNum < total,
       },
-      data: programs
+      data: programs,
     })
   } catch (error) {
     console.error('Get programs error:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Server error'
-    })
+    res.status(500).json({ success: false, error: 'Server error' })
   }
 }
 

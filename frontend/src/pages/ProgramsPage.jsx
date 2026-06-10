@@ -1,131 +1,110 @@
-import { useState, useEffect } from 'react'
-import { Search, MapPin, DollarSign, Building2, Filter, Sparkles, X, CheckCircle, XCircle } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import {
+  Search, MapPin, Building2, Filter, Sparkles, X,
+  CheckCircle, XCircle, ChevronLeft, ChevronRight, SlidersHorizontal,
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button, Card, Badge, Input, Modal } from '../components/ui'
 import { programsAPI, eligibilityAPI } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
+const PROGRAM_TYPES = [
+  'All', 'Healthcare', 'Food Assistance', 'Housing', 'Education',
+  'Employment', 'Financial Aid', 'Childcare', 'Disability', 'Seniors', 'Other',
+]
+
+const PAGE_LIMIT = 20
+
 export default function ProgramsPage() {
-  const [programs, setPrograms] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [programs,   setPrograms]   = useState([])
+  const [total,      setTotal]      = useState(0)
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, hasMore: false })
+  const [loading,    setLoading]    = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [error,      setError]      = useState(null)
+
+  // Filters
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedProgram, setSelectedProgram] = useState(null)
+  const [activeType,  setActiveType]  = useState('All')
+  const [showFilters, setShowFilters] = useState(false)
+
+  // Eligibility modal
+  const [selectedProgram,      setSelectedProgram]      = useState(null)
   const [showEligibilityModal, setShowEligibilityModal] = useState(false)
-  const [eligibilityResult, setEligibilityResult] = useState(null)
-  const [checkingEligibility, setCheckingEligibility] = useState(false)
-  
+  const [eligibilityResult,    setEligibilityResult]    = useState(null)
+  const [checkingEligibility,  setCheckingEligibility]  = useState(false)
+  const [eligibilityForm, setEligibilityForm] = useState({
+    annualIncome: '', householdSize: '', employmentStatus: 'employed', age: '',
+  })
+
   const { isLoggedIn } = useAuth()
   const navigate = useNavigate()
 
-  // Form state for eligibility check
-  const [eligibilityForm, setEligibilityForm] = useState({
-    annualIncome: '',
-    householdSize: '',
-    employmentStatus: 'employed',
-    age: ''
-  })
-
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2
-      }
-    }
-  }
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5,
-        ease: "easeOut"
-      }
-    }
-  }
-
-  const cardVariants = {
-    hidden: { opacity: 0, scale: 0.9 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: {
-        duration: 0.4,
-        ease: "easeOut"
-      }
-    },
-    hover: {
-      y: -8,
-      scale: 1.02,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 20
-      }
-    }
-  }
-
-  const loadingVariants = {
-    animate: {
-      rotate: 360,
-      transition: {
-        duration: 1,
-        repeat: Infinity,
-        ease: "linear"
-      }
-    }
-  }
-
-  useEffect(() => {
-    fetchPrograms()
-  }, [])
-
-  const fetchPrograms = async () => {
+  // ── Data fetching ────────────────────────────────────────────────────────
+  const fetchPrograms = useCallback(async (page = 1, append = false) => {
     try {
-      setLoading(true)
-      const response = await programsAPI.getAll()
-      setPrograms(response.data || [])
+      append ? setLoadingMore(true) : setLoading(true)
+      setError(null)
+
+      const params = { page, limit: PAGE_LIMIT }
+      if (activeType !== 'All') params.type  = activeType
+      if (searchQuery.trim())   params.search = searchQuery.trim()
+
+      const res = await programsAPI.getAll(params)
+
+      setPrograms(prev => append ? [...prev, ...(res.data || [])] : (res.data || []))
+      setTotal(res.total || 0)
+      setPagination(res.pagination || { page, pages: 1, hasMore: false })
     } catch (err) {
       setError('Failed to load programs')
-      console.error('Error fetching programs:', err)
+      console.error(err)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
-  }
+  }, [activeType, searchQuery])
 
-  const handleSearch = async (e) => {
+  // Re-fetch on filter change (reset to page 1)
+  useEffect(() => {
+    fetchPrograms(1, false)
+  }, [activeType]) // eslint-disable-line
+
+  const handleSearch = (e) => {
     e.preventDefault()
-    if (!searchQuery.trim()) {
-      fetchPrograms()
-      return
-    }
+    fetchPrograms(1, false)
+  }
 
-    try {
-      setLoading(true)
-      const response = await programsAPI.search(searchQuery)
-      setPrograms(response.data || [])
-    } catch (err) {
-      setError('Search failed')
-      console.error('Error searching programs:', err)
-    } finally {
-      setLoading(false)
+  const handleClearSearch = () => {
+    setSearchQuery('')
+    setActiveType('All')
+    // useEffect won't fire since activeType didn't change; call directly
+    programsAPI.getAll({ page: 1, limit: PAGE_LIMIT })
+      .then(res => {
+        setPrograms(res.data || [])
+        setTotal(res.total || 0)
+        setPagination(res.pagination || { page: 1, pages: 1, hasMore: false })
+      })
+      .catch(() => {})
+  }
+
+  const handleLoadMore = () => {
+    if (pagination.hasMore && !loadingMore) {
+      fetchPrograms(pagination.page + 1, true)
     }
   }
 
+  const handlePageChange = (newPage) => {
+    fetchPrograms(newPage, false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  // ── Eligibility ──────────────────────────────────────────────────────────
   const handleCheckEligibility = (program) => {
     if (!isLoggedIn) {
-      alert('Please login to check eligibility')
       navigate('/login')
       return
     }
-    
     setSelectedProgram(program)
     setShowEligibilityModal(true)
     setEligibilityResult(null)
@@ -133,49 +112,26 @@ export default function ProgramsPage() {
 
   const handleEligibilitySubmit = async (e) => {
     e.preventDefault()
-    
     try {
       setCheckingEligibility(true)
-      
       const personalInfo = {
-        annualIncome: parseInt(eligibilityForm.annualIncome),
-        householdSize: parseInt(eligibilityForm.householdSize),
+        annualIncome:     parseInt(eligibilityForm.annualIncome),
+        householdSize:    parseInt(eligibilityForm.householdSize),
         employmentStatus: eligibilityForm.employmentStatus,
-        age: parseInt(eligibilityForm.age)
+        age:              parseInt(eligibilityForm.age),
       }
-      
-      console.log('Checking eligibility with:', personalInfo)
-      console.log('Program ID:', selectedProgram._id)
-      
       const response = await eligibilityAPI.check(personalInfo, [selectedProgram._id])
-      
-      console.log('Eligibility response:', response)
-      
-      // Backend returns { success: true, data: { summary, results } }
-      if (response.success && response.data && response.data.results && response.data.results.length > 0) {
-        console.log('Setting result:', response.data.results[0])
+      if (response.success && response.data?.results?.length > 0) {
         const result = response.data.results[0]
-        
-        // Transform to match expected format and include AI insights
         setEligibilityResult({
           program: selectedProgram,
           isEligible: result.isEligible,
           matchScore: result.score,
-          reasons: [
-            ...result.matchedCriteria,
-            ...result.unmatchedCriteria,
-            ...result.recommendations
-          ],
-          // Include AI insights if available
-          aiInsights: result.aiInsights || null
+          reasons: [...(result.matchedCriteria || []), ...(result.unmatchedCriteria || []), ...(result.recommendations || [])],
+          aiInsights: result.aiInsights || null,
         })
-      } else {
-        console.error('No eligibility data in response:', response)
-        alert('No eligibility data received. Please try again.')
       }
     } catch (err) {
-      console.error('Error checking eligibility:', err)
-      console.error('Error details:', err.response)
       alert('Failed to check eligibility: ' + (err.response?.data?.error || err.message))
     } finally {
       setCheckingEligibility(false)
@@ -186,334 +142,334 @@ export default function ProgramsPage() {
     setShowEligibilityModal(false)
     setSelectedProgram(null)
     setEligibilityResult(null)
-    setEligibilityForm({
-      annualIncome: '',
-      householdSize: '',
-      employmentStatus: 'employed',
-      age: ''
-    })
+    setEligibilityForm({ annualIncome: '', householdSize: '', employmentStatus: 'employed', age: '' })
   }
 
+  // ── Render helpers ───────────────────────────────────────────────────────
+  const typeColor = (type) => {
+    const colors = {
+      Healthcare: 'bg-red-100 text-red-700',
+      Housing: 'bg-yellow-100 text-yellow-700',
+      Education: 'bg-blue-100 text-blue-700',
+      Employment: 'bg-green-100 text-green-700',
+      'Financial Aid': 'bg-purple-100 text-purple-700',
+      'Food Assistance': 'bg-orange-100 text-orange-700',
+      Seniors: 'bg-teal-100 text-teal-700',
+      Disability: 'bg-pink-100 text-pink-700',
+    }
+    return colors[type] || 'bg-gray-100 text-gray-700'
+  }
+
+  // ── Loading state ────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <motion.div 
-          className="text-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <motion.div
-            className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full mx-auto mb-4"
-            variants={loadingVariants}
-            animate="animate"
-          />
-          <motion.p 
-            className="text-gray-600 text-lg"
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            Loading programs...
-          </motion.p>
-        </motion.div>
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+        <p className="text-gray-500">Loading programs…</p>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <motion.div 
-          className="text-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <motion.div
-            className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <span className="text-red-600 text-2xl">⚠️</span>
-          </motion.div>
-          <p className="text-red-600 mb-4 text-lg">{error}</p>
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Button onClick={fetchPrograms}>
-              Try Again
-            </Button>
-          </motion.div>
-        </motion.div>
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+        <p className="text-red-500 mb-4">{error}</p>
+        <Button onClick={() => fetchPrograms(1)}>Try Again</Button>
       </div>
     )
   }
 
   return (
-    <motion.div 
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
-    >
-      {/* Header */}
-      <motion.div 
-        className="mb-8 text-center"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.1 }}
-      >
-        <motion.div
-          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full text-sm font-medium mb-4"
-          whileHover={{ scale: 1.05 }}
-          transition={{ type: "spring", stiffness: 300 }}
-        >
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+      {/* ── Header ── */}
+      <div className="mb-8 text-center">
+        <div className="inline-flex items-center px-4 py-2 bg-blue-50 rounded-full text-sm font-medium mb-4">
           <Sparkles className="w-4 h-4 mr-2 text-blue-600" />
           <span className="text-blue-800">Discover Your Benefits</span>
-        </motion.div>
-        
+        </div>
         <h1 className="text-4xl font-bold text-gray-900 mb-2">Browse Programs</h1>
-        <motion.p 
-          className="text-gray-600 text-lg"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-        >
-          Discover welfare programs you may be eligible for
-        </motion.p>
-      </motion.div>
+        <p className="text-gray-500">
+          {total > 0
+            ? `${total.toLocaleString()} government welfare programs`
+            : 'Discover welfare programs you may be eligible for'}
+        </p>
+      </div>
 
-      {/* Search */}
-      <motion.form 
-        onSubmit={handleSearch} 
-        className="mb-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
-      >
-        <motion.div 
-          className="relative max-w-2xl mx-auto"
-          whileHover={{ scale: 1.02 }}
-          transition={{ type: "spring", stiffness: 300 }}
-        >
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <Input 
-            placeholder="Search programs by name, type, or keyword..."
-            className="pl-12 pr-24 py-4 text-lg border-2 border-gray-200 focus:border-blue-500 rounded-xl shadow-lg focus:shadow-xl transition-all duration-300"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <motion.div
-            className="absolute right-2 top-1/2 transform -translate-y-1/2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Button 
-              type="submit" 
-              className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              size="sm"
-            >
-              Search
-            </Button>
-          </motion.div>
-        </motion.div>
-      </motion.form>
-
-      {/* Programs Grid */}
-      <AnimatePresence mode="wait">
-        {programs.length === 0 ? (
-          <motion.div 
-            className="text-center py-16"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.5 }}
-          >
-            <motion.div
-              className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6"
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <Filter className="w-12 h-12 text-gray-400" />
-            </motion.div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">No programs found</h3>
-            <p className="text-gray-500">Try adjusting your search criteria</p>
-          </motion.div>
-        ) : (
-          <motion.div 
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {programs.map((program, index) => (
-              <motion.div
-                key={program.id}
-                variants={cardVariants}
-                whileHover="hover"
-                layout
+      {/* ── Search bar ── */}
+      <form onSubmit={handleSearch} className="mb-6">
+        <div className="relative max-w-2xl mx-auto flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search programs by name or keyword…"
+              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-gray-900"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <Card className="h-full hover:shadow-xl transition-shadow duration-300 border-0 shadow-lg bg-gradient-to-br from-white to-gray-50">
-                  {/* Program Type Badge */}
-                  <motion.div 
-                    className="flex items-center justify-between mb-4"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      transition={{ type: "spring", stiffness: 300 }}
-                    >
-                      <Badge 
-                        variant="primary"
-                        className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-3 py-1"
-                      >
-                        {program.type}
-                      </Badge>
-                    </motion.div>
-                  </motion.div>
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6">
+            Search
+          </Button>
+          <button
+            type="button"
+            onClick={() => setShowFilters(f => !f)}
+            className={`p-3 rounded-xl border-2 transition-colors ${showFilters ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+            title="Filters"
+          >
+            <SlidersHorizontal className="w-5 h-5" />
+          </button>
+        </div>
+      </form>
 
-                  {/* Program Name */}
-                  <motion.h3 
-                    className="text-xl font-bold text-gray-900 mb-3 line-clamp-2"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.1 + 0.1 }}
-                  >
-                    {program.name}
-                  </motion.h3>
-
-                  {/* Description */}
-                  <motion.p 
-                    className="text-sm text-gray-600 mb-6 line-clamp-3"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.1 + 0.2 }}
-                  >
-                    {program.description}
-                  </motion.p>
-
-                  {/* Program Details */}
-                  <motion.div 
-                    className="space-y-3 text-sm mb-6"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 + 0.3 }}
-                  >
-                    <motion.div 
-                      className="flex items-center text-gray-600 group"
-                      whileHover={{ x: 5 }}
-                      transition={{ type: "spring", stiffness: 300 }}
-                    >
-                      <Building2 className="w-4 h-4 mr-3 text-blue-500 group-hover:text-blue-600 transition-colors" />
-                      <span className="group-hover:text-gray-800 transition-colors">{program.agency}</span>
-                    </motion.div>
-                    <motion.div 
-                      className="flex items-center text-gray-600 group"
-                      whileHover={{ x: 5 }}
-                      transition={{ type: "spring", stiffness: 300 }}
-                    >
-                      <MapPin className="w-4 h-4 mr-3 text-green-500 group-hover:text-green-600 transition-colors" />
-                      <span className="group-hover:text-gray-800 transition-colors">{program.location}</span>
-                    </motion.div>
-                    {program.maxBenefit > 0 && (
-                      <motion.div 
-                        className="flex items-center text-gray-600 group"
-                        whileHover={{ x: 5 }}
-                        transition={{ type: "spring", stiffness: 300 }}
-                      >
-                        <DollarSign className="w-4 h-4 mr-3 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
-                        <span className="group-hover:text-gray-800 transition-colors font-medium">
-                          Up to ${program.maxBenefit}/month
-                        </span>
-                      </motion.div>
-                    )}
-                  </motion.div>
-
-                  {/* CTA */}
-                  <motion.div 
-                    className="mt-auto pt-4 border-t border-gray-100"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.1 + 0.4 }}
-                  >
-                    <button
-                      onClick={() => handleCheckEligibility(program)}
-                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
-                    >
-                      Check Eligibility
-                    </button>
-                  </motion.div>
-                </Card>
-              </motion.div>
-            ))}
+      {/* ── Type filter pills ── */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-6 overflow-hidden"
+          >
+            <div className="flex flex-wrap gap-2 justify-center pb-2">
+              {PROGRAM_TYPES.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setActiveType(t)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    activeType === t
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Eligibility Check Modal */}
+      {/* ── Results count + active filters ── */}
+      <div className="flex items-center justify-between mb-6 text-sm text-gray-500">
+        <span>
+          {total === 0
+            ? 'No programs found'
+            : `Showing ${programs.length} of ${total.toLocaleString()} programs`}
+          {activeType !== 'All' && (
+            <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">
+              {activeType}
+              <button onClick={() => setActiveType('All')}><X className="w-3 h-3" /></button>
+            </span>
+          )}
+        </span>
+        {total > 0 && (
+          <span>Page {pagination.page} of {pagination.pages}</span>
+        )}
+      </div>
+
+      {/* ── Programs grid ── */}
+      {programs.length === 0 ? (
+        <div className="text-center py-16">
+          <Filter className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-600 mb-1">No programs found</h3>
+          <p className="text-gray-400 text-sm">Try different search terms or clear your filters</p>
+          <button onClick={handleClearSearch} className="mt-4 text-blue-600 text-sm hover:underline">
+            Clear all filters
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {programs.map((program) => (
+              <motion.div
+                key={program._id}
+                layout
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200 border border-gray-100">
+                  {/* Type badge + state */}
+                  <div className="flex items-start justify-between mb-3">
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${typeColor(program.type)}`}>
+                      {program.type}
+                    </span>
+                    {program.state && program.state !== 'All India' && (
+                      <span className="flex items-center text-xs text-gray-400 gap-1">
+                        <MapPin className="w-3 h-3" />{program.state}
+                      </span>
+                    )}
+                    {program.state === 'All India' && (
+                      <span className="text-xs text-green-600 font-medium">🇮🇳 Nationwide</span>
+                    )}
+                  </div>
+
+                  {/* Name */}
+                  <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 leading-snug">
+                    {program.name}
+                  </h3>
+
+                  {/* Description */}
+                  <p className="text-sm text-gray-500 line-clamp-3 mb-4 flex-1">
+                    {program.description || 'No description available.'}
+                  </p>
+
+                  {/* Agency */}
+                  <div className="flex items-center text-xs text-gray-400 mb-4 gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 shrink-0" />
+                    <span className="line-clamp-1">{program.agency}</span>
+                  </div>
+
+                  {/* CTA */}
+                  <button
+                    onClick={() => handleCheckEligibility(program)}
+                    className="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
+                  >
+                    Check Eligibility
+                  </button>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* ── Pagination ── */}
+          <div className="mt-10 flex flex-col items-center gap-4">
+            {/* Load more button */}
+            {pagination.hasMore && (
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="px-8 py-3 rounded-xl border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingMore
+                  ? <span className="flex items-center gap-2"><span className="animate-spin inline-block">⏳</span> Loading…</span>
+                  : `Load more programs (${total - programs.length} remaining)`
+                }
+              </button>
+            )}
+
+            {/* Page number navigation */}
+            {pagination.pages > 1 && (
+              <div className="flex items-center gap-2 text-sm">
+                <button
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={pagination.page <= 1}
+                  className="p-2 rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {/* Page number pills */}
+                {Array.from({ length: Math.min(7, pagination.pages) }, (_, i) => {
+                  // Show pages around current page
+                  const total_pages = pagination.pages
+                  const current = pagination.page
+                  let page
+                  if (total_pages <= 7) {
+                    page = i + 1
+                  } else if (current <= 4) {
+                    page = i + 1
+                    if (i === 6) page = total_pages
+                  } else if (current >= total_pages - 3) {
+                    page = i === 0 ? 1 : total_pages - 6 + i
+                  } else {
+                    const offsets = [1, current - 2, current - 1, current, current + 1, current + 2, total_pages]
+                    page = offsets[i]
+                  }
+                  const isEllipsisBefore = i === 1 && page > 2
+                  const isEllipsisAfter  = i === 5 && page < total_pages - 1
+                  if (isEllipsisBefore || isEllipsisAfter) {
+                    return <span key={i} className="px-1 text-gray-400">…</span>
+                  }
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => handlePageChange(page)}
+                      className={`w-9 h-9 rounded-lg border font-medium transition-colors ${
+                        page === current
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                })}
+
+                <button
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={!pagination.hasMore}
+                  className="p-2 rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {!pagination.hasMore && programs.length > 0 && (
+              <p className="text-sm text-gray-400">
+                All {total.toLocaleString()} programs loaded
+              </p>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── Eligibility Modal ── */}
       <Modal isOpen={showEligibilityModal} onClose={closeModal}>
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-gray-900">
               {eligibilityResult ? 'Eligibility Result' : 'Check Eligibility'}
             </h2>
-            <button
-              onClick={closeModal}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
+            <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
               <X className="w-6 h-6" />
             </button>
           </div>
 
           {selectedProgram && !eligibilityResult && (
             <>
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                <h3 className="font-semibold text-blue-900 mb-1">{selectedProgram.name}</h3>
-                <p className="text-sm text-blue-700">{selectedProgram.agency}</p>
+              <div className="mb-5 p-4 bg-blue-50 rounded-lg">
+                <p className="font-semibold text-blue-900 text-sm line-clamp-2">{selectedProgram.name}</p>
+                <p className="text-xs text-blue-600 mt-1">{selectedProgram.agency}</p>
               </div>
 
               <form onSubmit={handleEligibilitySubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Annual Income ($)
-                  </label>
-                  <Input
-                    type="number"
-                    required
-                    value={eligibilityForm.annualIncome}
-                    onChange={(e) => setEligibilityForm({ ...eligibilityForm, annualIncome: e.target.value })}
-                    placeholder="e.g., 35000"
-                    className="w-full"
-                  />
-                </div>
+                {[
+                  { label: 'Annual Income (₹)', key: 'annualIncome', type: 'number', placeholder: 'e.g. 250000' },
+                  { label: 'Household Size',     key: 'householdSize', type: 'number', placeholder: 'e.g. 4' },
+                  { label: 'Age',                key: 'age',          type: 'number', placeholder: 'e.g. 35' },
+                ].map(({ label, key, type, placeholder }) => (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                    <Input
+                      type={type}
+                      required
+                      value={eligibilityForm[key]}
+                      onChange={(e) => setEligibilityForm(f => ({ ...f, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      className="w-full"
+                    />
+                  </div>
+                ))}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Household Size
-                  </label>
-                  <Input
-                    type="number"
-                    required
-                    min="1"
-                    value={eligibilityForm.householdSize}
-                    onChange={(e) => setEligibilityForm({ ...eligibilityForm, householdSize: e.target.value })}
-                    placeholder="e.g., 3"
-                    className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Employment Status
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Employment Status</label>
                   <select
-                    required
                     value={eligibilityForm.employmentStatus}
-                    onChange={(e) => setEligibilityForm({ ...eligibilityForm, employmentStatus: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={(e) => setEligibilityForm(f => ({ ...f, employmentStatus: e.target.value }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
                   >
                     <option value="employed">Employed</option>
                     <option value="unemployed">Unemployed</option>
@@ -523,37 +479,14 @@ export default function ProgramsPage() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Age
-                  </label>
-                  <Input
-                    type="number"
-                    required
-                    min="1"
-                    max="120"
-                    value={eligibilityForm.age}
-                    onChange={(e) => setEligibilityForm({ ...eligibilityForm, age: e.target.value })}
-                    placeholder="e.g., 35"
-                    className="w-full"
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <Button
-                    type="button"
-                    onClick={closeModal}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
+                <div className="flex gap-3 pt-2">
+                  <Button type="button" onClick={closeModal} variant="outline" className="flex-1">Cancel</Button>
                   <Button
                     type="submit"
                     disabled={checkingEligibility}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    {checkingEligibility ? 'Checking...' : 'Check Eligibility'}
+                    {checkingEligibility ? 'Checking…' : 'Check Eligibility'}
                   </Button>
                 </div>
               </form>
@@ -561,140 +494,68 @@ export default function ProgramsPage() {
           )}
 
           {eligibilityResult && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-center"
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-                className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
-                  eligibilityResult.isEligible 
-                    ? 'bg-green-100' 
-                    : 'bg-red-100'
-                }`}
-              >
-                {eligibilityResult.isEligible ? (
-                  <CheckCircle className="w-12 h-12 text-green-600" />
-                ) : (
-                  <XCircle className="w-12 h-12 text-red-600" />
-                )}
-              </motion.div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${eligibilityResult.isEligible ? 'bg-green-100' : 'bg-red-100'}`}>
+                {eligibilityResult.isEligible
+                  ? <CheckCircle className="w-10 h-10 text-green-600" />
+                  : <XCircle className="w-10 h-10 text-red-600" />
+                }
+              </div>
 
-              <h3 className={`text-2xl font-bold mb-2 ${
-                eligibilityResult.isEligible ? 'text-green-900' : 'text-red-900'
-              }`}>
+              <h3 className={`text-xl font-bold mb-2 ${eligibilityResult.isEligible ? 'text-green-800' : 'text-red-800'}`}>
                 {eligibilityResult.isEligible ? 'You are Eligible!' : 'Not Eligible'}
               </h3>
-
-              <p className="text-gray-600 mb-4">
-                {eligibilityResult.isEligible 
-                  ? `Congratulations! You meet the requirements for ${selectedProgram.name}.`
-                  : `Unfortunately, you don't meet the current requirements for ${selectedProgram.name}.`
-                }
+              <p className="text-gray-500 text-sm mb-5">
+                {eligibilityResult.isEligible
+                  ? `You meet the requirements for ${selectedProgram.name}.`
+                  : `You don't meet the current requirements for ${selectedProgram.name}.`}
               </p>
 
-              <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-                <h4 className="font-semibold text-gray-900 mb-3">Match Score</h4>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
+              {/* Match score */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-5 text-left">
+                <p className="text-sm font-medium text-gray-700 mb-2">Match score</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-gray-200 rounded-full h-2.5">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${eligibilityResult.matchScore}%` }}
-                      transition={{ duration: 1, delay: 0.5 }}
-                      className={`h-full ${
-                        eligibilityResult.matchScore >= 70 
-                          ? 'bg-green-500' 
-                          : eligibilityResult.matchScore >= 40 
-                          ? 'bg-yellow-500' 
-                          : 'bg-red-500'
+                      transition={{ duration: 0.8 }}
+                      className={`h-full rounded-full ${
+                        eligibilityResult.matchScore >= 70 ? 'bg-green-500' :
+                        eligibilityResult.matchScore >= 40 ? 'bg-yellow-500' : 'bg-red-500'
                       }`}
                     />
                   </div>
-                  <span className="font-bold text-gray-900">{eligibilityResult.matchScore}%</span>
+                  <span className="font-bold text-gray-900 text-sm">{eligibilityResult.matchScore}%</span>
                 </div>
 
-                {eligibilityResult.reasons && eligibilityResult.reasons.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="font-semibold text-gray-900 mb-2">Details</h4>
-                    <ul className="space-y-1 text-sm text-gray-600">
-                      {eligibilityResult.reasons.map((reason, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <span className="text-blue-500 mt-1">•</span>
-                          <span>{reason}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* AI Insights */}
-                {eligibilityResult.aiInsights && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200"
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <Sparkles className="w-5 h-5 text-blue-600" />
-                      <h4 className="font-semibold text-blue-900">AI Insights</h4>
-                    </div>
-                    
-                    {eligibilityResult.aiInsights.explanation && (
-                      <div className="mb-3">
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                          {eligibilityResult.aiInsights.explanation}
-                        </p>
-                      </div>
-                    )}
-
-                    {eligibilityResult.aiInsights.advice && (
-                      <div className="mb-3">
-                        <p className="text-sm font-medium text-gray-800 mb-1">💡 Advice:</p>
-                        <p className="text-sm text-gray-700">
-                          {eligibilityResult.aiInsights.advice}
-                        </p>
-                      </div>
-                    )}
-
-                    {eligibilityResult.aiInsights.applicationTips && eligibilityResult.isEligible && (
-                      <div className="mb-3">
-                        <p className="text-sm font-medium text-gray-800 mb-1">📝 Application Tips:</p>
-                        <p className="text-sm text-gray-700">
-                          {eligibilityResult.aiInsights.applicationTips}
-                        </p>
-                      </div>
-                    )}
-
-                    {eligibilityResult.aiInsights.similarPrograms && eligibilityResult.aiInsights.similarPrograms.length > 0 && (
-                      <div>
-                        <p className="text-sm font-medium text-gray-800 mb-1">🔍 Similar Programs:</p>
-                        <p className="text-sm text-gray-700">
-                          {eligibilityResult.aiInsights.similarPrograms.join(', ')}
-                        </p>
-                      </div>
-                    )}
-                  </motion.div>
+                {eligibilityResult.reasons?.length > 0 && (
+                  <ul className="mt-3 space-y-1 text-sm text-gray-600">
+                    {eligibilityResult.reasons.map((r, i) => (
+                      <li key={i} className="flex gap-2"><span className="text-blue-400 mt-0.5">•</span>{r}</li>
+                    ))}
+                  </ul>
                 )}
               </div>
 
+              {eligibilityResult.aiInsights && (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-5 text-left">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-semibold text-blue-900">AI Insights</span>
+                  </div>
+                  {eligibilityResult.aiInsights.explanation && (
+                    <p className="text-sm text-gray-700">{eligibilityResult.aiInsights.explanation}</p>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-3">
-                <Button
-                  onClick={closeModal}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Close
-                </Button>
-                {eligibilityResult.isEligible && (
+                <Button onClick={closeModal} variant="outline" className="flex-1">Close</Button>
+                {eligibilityResult.isEligible && selectedProgram.applicationProcess?.url && (
                   <Button
-                    onClick={() => {
-                      window.open(selectedProgram.applicationProcess?.url, '_blank')
-                    }}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    onClick={() => window.open(selectedProgram.applicationProcess.url, '_blank')}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     Apply Now
                   </Button>
@@ -704,6 +565,6 @@ export default function ProgramsPage() {
           )}
         </div>
       </Modal>
-    </motion.div>
+    </div>
   )
 }
