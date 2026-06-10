@@ -16,6 +16,8 @@ const PROGRAM_TYPES = [
 
 const PAGE_LIMIT = 20
 
+const PRIORITY_RE = /^pradhan\s+mantri|^pm[-\s]|pm[-\s]?jay|ayushman|pm[-\s]?kisan|pmay|mgnrega|pmgkay|jan\s+dhan|atal\s+pension|pmjjby|pmsby|svanidhi|pmkvy|sukanya/i
+
 export default function ProgramsPage() {
   const [programs,   setPrograms]   = useState([])
   const [total,      setTotal]      = useState(0)
@@ -302,9 +304,16 @@ export default function ProgramsPage() {
                 <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200 border border-gray-100">
                   {/* Type badge + state */}
                   <div className="flex items-start justify-between mb-3">
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${typeColor(program.type)}`}>
-                      {program.type}
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${typeColor(program.type)}`}>
+                        {program.type}
+                      </span>
+                      {PRIORITY_RE.test(program.name) && (
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">
+                          ⭐ Featured
+                        </span>
+                      )}
+                    </div>
                     {program.state && program.state !== 'All India' && (
                       <span className="flex items-center text-xs text-gray-400 gap-1">
                         <MapPin className="w-3 h-3" />{program.state}

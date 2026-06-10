@@ -8,14 +8,10 @@ export const getPrograms = async (req, res) => {
   try {
     const { page = 1, limit = 20, type, agency, status = 'active', state, search } = req.query
 
-    // Build query
     const query = { status }
-
     if (type)   query.type   = new RegExp(type, 'i')
     if (agency) query.agency = new RegExp(agency, 'i')
     if (state)  query.state  = new RegExp(state, 'i')
-
-    // Optional keyword search across name + description
     if (search) {
       query.$or = [
         { name:        new RegExp(search, 'i') },
@@ -28,23 +24,43 @@ export const getPrograms = async (req, res) => {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)))
     const skip     = (pageNum - 1) * limitNum
 
-    const [programs, total] = await Promise.all([
-      Program.find(query)
-        .select('-__v')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limitNum),
-      Program.countDocuments(query),
+    // Use aggregation to add a computed priority field and sort by it
+    // Priority = 1 for PM/central flagship schemes, 0 for all others
+    const priorityRegex = 'pradhan mantri|^pm[- ]|pm.?jay|ayushman|pm.?kisan|pmay|mgnrega|pmgkay|jan dhan|atal pension|pmjjby|pmsby|svanidhi|pmkvy|sukanya'
+
+    const [result] = await Program.aggregate([
+      { $match: query },
+      {
+        $addFields: {
+          _priority: {
+            $cond: [
+              { $regexMatch: { input: { $toLower: '$name' }, regex: priorityRegex } },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+      { $sort: { _priority: -1, createdAt: -1 } },
+      {
+        $facet: {
+          data:  [{ $skip: skip }, { $limit: limitNum }, { $project: { __v: 0, _priority: 0 } }],
+          total: [{ $count: 'count' }],
+        },
+      },
     ])
+
+    const programs = result?.data  ?? []
+    const total    = result?.total?.[0]?.count ?? 0
 
     res.json({
       success: true,
       count:  programs.length,
       total,
       pagination: {
-        page:   pageNum,
-        limit:  limitNum,
-        pages:  Math.ceil(total / limitNum),
+        page:    pageNum,
+        limit:   limitNum,
+        pages:   Math.ceil(total / limitNum),
         hasMore: pageNum * limitNum < total,
       },
       data: programs,
