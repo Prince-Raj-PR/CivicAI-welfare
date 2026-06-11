@@ -675,15 +675,7 @@ We welcome contributions to CivicAI! This project aims to make welfare programs 
 - **Documentation**: Check this README and inline code comments
 - **Issues**: Create GitHub issues for bugs or feature requests
 - **Email**: Contact the development team
-- **Community**: Join discussions in GitHub Discussions
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-This project is open source and available under the MIT License. Feel free to use, modify, and distribute as needed.
-
----
+- **Community**: Join discussions in GitHub Discussion.
 
 <div align="center">
 
