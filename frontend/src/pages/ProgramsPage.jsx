@@ -38,6 +38,7 @@ export default function ProgramsPage() {
   const [checkingEligibility,  setCheckingEligibility]  = useState(false)
   const [eligibilityForm, setEligibilityForm] = useState({
     annualIncome: '', householdSize: '', employmentStatus: 'employed', age: '',
+    category: '', isStudent: false, hasDisability: false,
   })
 
   const { isLoggedIn } = useAuth()
@@ -110,6 +111,8 @@ export default function ProgramsPage() {
     setSelectedProgram(program)
     setShowEligibilityModal(true)
     setEligibilityResult(null)
+    // Reset form to defaults relevant to this scheme
+    setEligibilityForm({ annualIncome: '', householdSize: '', employmentStatus: 'employed', age: '', category: '', isStudent: false, hasDisability: false })
   }
 
   const handleEligibilitySubmit = async (e) => {
@@ -117,10 +120,13 @@ export default function ProgramsPage() {
     try {
       setCheckingEligibility(true)
       const personalInfo = {
-        annualIncome:     parseInt(eligibilityForm.annualIncome),
-        householdSize:    parseInt(eligibilityForm.householdSize),
+        annualIncome:     parseInt(eligibilityForm.annualIncome) || 0,
+        householdSize:    parseInt(eligibilityForm.householdSize) || 1,
         employmentStatus: eligibilityForm.employmentStatus,
-        age:              parseInt(eligibilityForm.age),
+        age:              parseInt(eligibilityForm.age) || 0,
+        category:         eligibilityForm.category || '',
+        isStudent:        eligibilityForm.isStudent,
+        hasDisability:    eligibilityForm.hasDisability,
       }
       const response = await eligibilityAPI.check(personalInfo, [selectedProgram._id])
       if (response.success && response.data?.results?.length > 0) {
@@ -144,7 +150,78 @@ export default function ProgramsPage() {
     setShowEligibilityModal(false)
     setSelectedProgram(null)
     setEligibilityResult(null)
-    setEligibilityForm({ annualIncome: '', householdSize: '', employmentStatus: 'employed', age: '' })
+    setEligibilityForm({ annualIncome: '', householdSize: '', employmentStatus: 'employed', age: '', category: '', isStudent: false, hasDisability: false })
+  }
+
+  // Derive which form fields to show based on scheme criteria
+  const getSchemeFields = (program) => {
+    if (!program) return []
+    const c = program.eligibilityCriteria || {}
+    const fields = []
+
+    // Age — show if scheme has age bounds
+    if (c.minAge != null || c.maxAge != null) {
+      const hint = c.minAge && c.maxAge
+        ? `Between ${c.minAge}–${c.maxAge} years`
+        : c.minAge ? `Minimum ${c.minAge} years` : `Maximum ${c.maxAge} years`
+      fields.push({ key: 'age', label: 'Your Age', type: 'number', placeholder: 'e.g. 35', hint })
+    } else {
+      fields.push({ key: 'age', label: 'Your Age', type: 'number', placeholder: 'e.g. 35' })
+    }
+
+    // Income — show if scheme has income cap
+    if (c.maxIncome != null) {
+      fields.push({
+        key: 'annualIncome', label: 'Annual Income (₹)', type: 'number',
+        placeholder: 'e.g. 200000',
+        hint: `Scheme limit: ₹${c.maxIncome.toLocaleString('en-IN')}/year`,
+      })
+    } else {
+      fields.push({ key: 'annualIncome', label: 'Annual Income (₹)', type: 'number', placeholder: 'e.g. 200000' })
+    }
+
+    // Household size — only for housing/food/rural schemes
+    if (['Housing', 'Food Assistance', 'Financial Aid'].includes(program.type)) {
+      fields.push({ key: 'householdSize', label: 'Household Size', type: 'number', placeholder: 'e.g. 4' })
+    }
+
+    // Employment — show if scheme targets specific employment status
+    if (c.employmentStatus?.length > 0 || ['Employment', 'Financial Aid'].includes(program.type)) {
+      fields.push({ key: 'employmentStatus', label: 'Employment Status', type: 'select' })
+    }
+
+    // Category — show if scheme has allowedCategories OR name/type implies a target group
+    const nameLC = (program.name + ' ' + (program.description || '')).toLowerCase()
+    const hasTargetGroup = c.allowedCategories?.length > 0
+      || /women|girl|female|widow|divyang|disab|farmer|kisan|sc\b|st\b|obc|ews|minority|bpl|senior|pension|scholar|student/.test(nameLC)
+
+    if (hasTargetGroup) {
+      const hint = c.allowedCategories?.length > 0
+        ? `Eligible: ${c.allowedCategories.slice(0, 3).join(', ')}${c.allowedCategories.length > 3 ? '…' : ''}`
+        : null
+      fields.push({ key: 'category', label: 'Social Category / Who are you?', type: 'categorySelect', hint })
+    }
+
+    // Student — only if scheme requires it
+    if (c.studentRequired === true || program.type === 'Education') {
+      fields.push({ key: 'isStudent', label: 'Are you currently a student?', type: 'boolean' })
+    }
+
+    // Disability — only if scheme requires it
+    if (c.disabilityRequired === true || program.type === 'Disability') {
+      fields.push({ key: 'hasDisability', label: 'Do you have a disability?', type: 'boolean' })
+    }
+
+    return fields
+  }
+
+  // Get the best available apply URL for a program
+  const getApplyUrl = (program) => {
+    const url = program.applicationProcess?.url
+    if (url && url.trim()) return url.trim()
+    // Fallback: search on myScheme portal by name
+    const query = encodeURIComponent(program.name.slice(0, 60))
+    return `https://www.myscheme.gov.in/search?keyword=${query}`
   }
 
   // ── Render helpers ───────────────────────────────────────────────────────
@@ -437,8 +514,8 @@ export default function ProgramsPage() {
 
       {/* ── Eligibility Modal ── */}
       <Modal isOpen={showEligibilityModal} onClose={closeModal}>
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="p-6 max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900">
               {eligibilityResult ? 'Eligibility Result' : 'Check Eligibility'}
             </h2>
@@ -447,49 +524,148 @@ export default function ProgramsPage() {
             </button>
           </div>
 
-          {selectedProgram && !eligibilityResult && (
-            <>
-              <div className="mb-5 p-4 bg-blue-50 rounded-lg">
-                <p className="font-semibold text-blue-900 text-sm line-clamp-2">{selectedProgram.name}</p>
-                <p className="text-xs text-blue-600 mt-1">{selectedProgram.agency}</p>
+          {/* ── Program info header — always visible ── */}
+          {selectedProgram && (
+            <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 p-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${typeColor(selectedProgram.type)}`}>
+                      {selectedProgram.type}
+                    </span>
+                    {selectedProgram.state && selectedProgram.state !== 'All India' && (
+                      <span className="text-xs text-gray-500">{selectedProgram.state}</span>
+                    )}
+                  </div>
+                  <h3 className="font-bold text-blue-900 text-sm leading-snug mb-1">
+                    {selectedProgram.name}
+                  </h3>
+                  <p className="text-xs text-blue-700 mb-2">{selectedProgram.agency}</p>
+                  {/* Full description */}
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    {selectedProgram.description || 'No description available.'}
+                  </p>
+                  {/* Benefits */}
+                  {selectedProgram.benefits?.description && (
+                    <div className="mt-2 p-2 bg-white rounded-lg border border-blue-100">
+                      <p className="text-xs font-semibold text-gray-700 mb-0.5">What you get:</p>
+                      <p className="text-xs text-gray-600">{selectedProgram.benefits.description}</p>
+                    </div>
+                  )}
+                </div>
               </div>
+              {/* Required documents */}
+              {selectedProgram.eligibilityCriteria?.requiredDocuments?.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-blue-100">
+                  <p className="text-xs font-semibold text-gray-600 mb-1">Documents needed:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedProgram.eligibilityCriteria.requiredDocuments.map((doc, i) => (
+                      <span key={i} className="text-xs px-2 py-0.5 bg-white border border-blue-200 rounded-full text-gray-600">
+                        {doc}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
+          {/* ── Eligibility form ── */}
+          {selectedProgram && !eligibilityResult && (() => {
+            const fields = getSchemeFields(selectedProgram)
+            return (
               <form onSubmit={handleEligibilitySubmit} className="space-y-4">
-                {[
-                  { label: 'Annual Income (₹)', key: 'annualIncome', type: 'number', placeholder: 'e.g. 250000' },
-                  { label: 'Household Size',     key: 'householdSize', type: 'number', placeholder: 'e.g. 4' },
-                  { label: 'Age',                key: 'age',          type: 'number', placeholder: 'e.g. 35' },
-                ].map(({ label, key, type, placeholder }) => (
-                  <div key={key}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                    <Input
-                      type={type}
-                      required
-                      value={eligibilityForm[key]}
-                      onChange={(e) => setEligibilityForm(f => ({ ...f, [key]: e.target.value }))}
-                      placeholder={placeholder}
-                      className="w-full"
-                    />
+                <p className="text-xs text-gray-500 -mt-2 mb-1">
+                  Fill in the details below — we'll check if you qualify for this scheme.
+                </p>
+
+                {fields.map((field) => (
+                  <div key={field.key}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {field.label}
+                      {field.hint && (
+                        <span className="ml-2 text-xs font-normal text-blue-600">{field.hint}</span>
+                      )}
+                    </label>
+
+                    {field.type === 'number' && (
+                      <Input
+                        type="number"
+                        required
+                        min="0"
+                        value={eligibilityForm[field.key]}
+                        onChange={(e) => setEligibilityForm(f => ({ ...f, [field.key]: e.target.value }))}
+                        placeholder={field.placeholder}
+                        className="w-full"
+                      />
+                    )}
+
+                    {field.type === 'select' && (
+                      <select
+                        value={eligibilityForm.employmentStatus}
+                        onChange={(e) => setEligibilityForm(f => ({ ...f, employmentStatus: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                      >
+                        <option value="employed">Employed (Salaried / Private)</option>
+                        <option value="self-employed">Self-Employed / Farmer</option>
+                        <option value="unemployed">Unemployed</option>
+                        <option value="student">Student</option>
+                        <option value="retired">Retired / Pensioner</option>
+                      </select>
+                    )}
+
+                    {field.type === 'categorySelect' && (
+                      <select
+                        value={eligibilityForm.category}
+                        onChange={(e) => setEligibilityForm(f => ({ ...f, category: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                      >
+                        <option value="">Select your category</option>
+                        <option value="General">General</option>
+                        <option value="OBC">OBC (Other Backward Classes)</option>
+                        <option value="SC">SC (Scheduled Caste)</option>
+                        <option value="ST">ST (Scheduled Tribe)</option>
+                        <option value="EWS">EWS (Economically Weaker Section)</option>
+                        <option value="Minority">Minority</option>
+                        <option value="Women">Women / Girl Child</option>
+                        <option value="Disabled">Persons with Disability (PwD)</option>
+                        <option value="Senior Citizen">Senior Citizen (60+)</option>
+                        <option value="BPL">BPL (Below Poverty Line)</option>
+                        <option value="Farmer">Farmer / Kisan</option>
+                        <option value="Student">Student</option>
+                        <option value="Unorganised Worker">Unorganised / Informal Worker</option>
+                      </select>
+                    )}
+
+                    {field.type === 'boolean' && (
+                      <div className="flex gap-4">
+                        {['Yes', 'No'].map((opt) => {
+                          const val = opt === 'Yes'
+                          const current = eligibilityForm[field.key]
+                          return (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => setEligibilityForm(f => ({ ...f, [field.key]: val }))}
+                              className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium transition-colors ${
+                                current === val
+                                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                              }`}
+                            >
+                              {opt}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 ))}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Employment Status</label>
-                  <select
-                    value={eligibilityForm.employmentStatus}
-                    onChange={(e) => setEligibilityForm(f => ({ ...f, employmentStatus: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                  >
-                    <option value="employed">Employed</option>
-                    <option value="unemployed">Unemployed</option>
-                    <option value="self-employed">Self-Employed</option>
-                    <option value="retired">Retired</option>
-                    <option value="student">Student</option>
-                  </select>
-                </div>
-
                 <div className="flex gap-3 pt-2">
-                  <Button type="button" onClick={closeModal} variant="outline" className="flex-1">Cancel</Button>
+                  <Button type="button" onClick={closeModal} variant="outline" className="flex-1">
+                    Cancel
+                  </Button>
                   <Button
                     type="submit"
                     disabled={checkingEligibility}
@@ -498,12 +674,25 @@ export default function ProgramsPage() {
                     {checkingEligibility ? 'Checking…' : 'Check Eligibility'}
                   </Button>
                 </div>
-              </form>
-            </>
-          )}
 
+                {/* Apply directly button — always available */}
+                {getApplyUrl(selectedProgram) && (
+                  <a
+                    href={getApplyUrl(selectedProgram)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full text-center py-2.5 rounded-lg border-2 border-green-500 text-green-700 text-sm font-semibold hover:bg-green-50 transition-colors"
+                  >
+                    🌐 Apply directly on official website
+                  </a>
+                )}
+              </form>
+            )
+          })()}
+
+          {/* ── Result view ── */}
           {eligibilityResult && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${eligibilityResult.isEligible ? 'bg-green-100' : 'bg-red-100'}`}>
                 {eligibilityResult.isEligible
                   ? <CheckCircle className="w-10 h-10 text-green-600" />
@@ -511,19 +700,18 @@ export default function ProgramsPage() {
                 }
               </div>
 
-              <h3 className={`text-xl font-bold mb-2 ${eligibilityResult.isEligible ? 'text-green-800' : 'text-red-800'}`}>
+              <h3 className={`text-xl font-bold text-center mb-1 ${eligibilityResult.isEligible ? 'text-green-800' : 'text-red-800'}`}>
                 {eligibilityResult.isEligible ? 'You are Eligible!' : 'Not Eligible'}
               </h3>
-              <p className="text-gray-500 text-sm mb-5">
+              <p className="text-gray-500 text-sm text-center mb-5">
                 {eligibilityResult.isEligible
                   ? `You meet the requirements for ${selectedProgram.name}.`
-                  : `You don't meet the current requirements for ${selectedProgram.name}.`}
+                  : `You don't meet the current requirements.`}
               </p>
 
               {/* Match score */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-5 text-left">
-                <p className="text-sm font-medium text-gray-700 mb-2">Match score</p>
-                <div className="flex items-center gap-3">
+              <div className="bg-gray-50 rounded-lg p-4 mb-4 text-left">
+                <div className="flex items-center gap-3 mb-3">
                   <div className="flex-1 bg-gray-200 rounded-full h-2.5">
                     <motion.div
                       initial={{ width: 0 }}
@@ -535,40 +723,49 @@ export default function ProgramsPage() {
                       }`}
                     />
                   </div>
-                  <span className="font-bold text-gray-900 text-sm">{eligibilityResult.matchScore}%</span>
+                  <span className="font-bold text-gray-900 text-sm w-10 text-right">{eligibilityResult.matchScore}%</span>
                 </div>
 
                 {eligibilityResult.reasons?.length > 0 && (
-                  <ul className="mt-3 space-y-1 text-sm text-gray-600">
-                    {eligibilityResult.reasons.map((r, i) => (
-                      <li key={i} className="flex gap-2"><span className="text-blue-400 mt-0.5">•</span>{r}</li>
-                    ))}
+                  <ul className="space-y-1.5 text-sm">
+                    {eligibilityResult.reasons.map((r, i) => {
+                      const isGood = r.toLowerCase().includes('met') || r.toLowerCase().includes('eligible') || r.toLowerCase().includes('appear')
+                      const isBad  = r.toLowerCase().includes('exceeds') || r.toLowerCase().includes('must') || r.toLowerCase().includes('not meet') || r.toLowerCase().includes('maximum') || r.toLowerCase().includes('minimum age required')
+                      return (
+                        <li key={i} className={`flex gap-2 ${isGood ? 'text-green-700' : isBad ? 'text-red-600' : 'text-gray-600'}`}>
+                          <span className="mt-0.5 shrink-0">{isGood ? '✅' : isBad ? '❌' : 'ℹ️'}</span>
+                          <span>{r}</span>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </div>
 
-              {eligibilityResult.aiInsights && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-5 text-left">
-                  <div className="flex items-center gap-2 mb-2">
+              {eligibilityResult.aiInsights?.explanation && (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4">
+                  <div className="flex items-center gap-2 mb-1">
                     <Sparkles className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-semibold text-blue-900">AI Insights</span>
+                    <span className="text-xs font-semibold text-blue-900">AI Insight</span>
                   </div>
-                  {eligibilityResult.aiInsights.explanation && (
-                    <p className="text-sm text-gray-700">{eligibilityResult.aiInsights.explanation}</p>
-                  )}
+                  <p className="text-xs text-gray-700">{eligibilityResult.aiInsights.explanation}</p>
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 <Button onClick={closeModal} variant="outline" className="flex-1">Close</Button>
-                {eligibilityResult.isEligible && selectedProgram.applicationProcess?.url && (
-                  <Button
-                    onClick={() => window.open(selectedProgram.applicationProcess.url, '_blank')}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    Apply Now
-                  </Button>
-                )}
+                <a
+                  href={getApplyUrl(selectedProgram)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-white text-sm font-semibold transition-colors ${
+                    eligibilityResult.isEligible
+                      ? 'bg-green-600 hover:bg-green-700'
+                      : 'bg-gray-500 hover:bg-gray-600'
+                  }`}
+                >
+                  🌐 {eligibilityResult.isEligible ? 'Apply on Official Website' : 'View on Official Site'}
+                </a>
               </div>
             </motion.div>
           )}
