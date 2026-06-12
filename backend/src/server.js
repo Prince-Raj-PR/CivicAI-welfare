@@ -58,6 +58,12 @@ const limiter = rateLimit({
     })
   }
 })
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'CivicAI Welfare Backend Running'
+  })
+})
 app.use('/api/', limiter)
 
 // Logging
