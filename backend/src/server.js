@@ -39,7 +39,8 @@ app.use(helmet())
 // CORS configuration
 app.use(cors({
   origin: [
-    'http://localhost:3000'
+    'http://localhost:3000',
+    "https://civicai-welfare.vercel.app"
   ],
   credentials: true
 }))
