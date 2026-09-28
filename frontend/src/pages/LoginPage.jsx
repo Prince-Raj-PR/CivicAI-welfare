@@ -39,7 +39,7 @@ export default function LoginPage() {
     } catch (error) {
       console.error('Login failed:', error)
       
-      if (error.message.includes('EMAIL_NOT_VERIFIED') || error.message.includes('verify your email')) {
+      if (error.code === 'EMAIL_NOT_VERIFIED' || error.message?.toLowerCase().includes('verify your email')) {
         setShowResendVerification(true)
         setUserEmail(data.email)
         setLoginError('Please verify your email address before logging in.')

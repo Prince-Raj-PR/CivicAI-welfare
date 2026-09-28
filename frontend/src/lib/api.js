@@ -27,7 +27,12 @@ export async function apiRequest(endpoint, options = {}) {
     const data = await response.json()
 
     if (!response.ok) {
-      throw new Error(data.message || `HTTP error! status: ${response.status}`)
+      // Backend returns { success: false, error: "...", code?: "..." }
+      const err = new Error(data.error || data.message || `HTTP error! status: ${response.status}`)
+      err.code   = data.code   // e.g. 'EMAIL_NOT_VERIFIED'
+      err.status = response.status
+      err.data   = data
+      throw err
     }
 
     return data

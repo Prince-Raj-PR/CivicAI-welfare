@@ -1,333 +1,284 @@
+/**
+ * CivicAI – AI Service
+ * Uses Groq (free tier) with llama-3.3-70b-versatile
+ * All prompts are India-specific (Indian welfare schemes, ₹ currency, etc.)
+ */
+
 import Groq from 'groq-sdk'
 
-// Lazy initialization of Groq client
+// Lazy init — only creates client when key is present
 let groq = null
-
-const getGroqClient = () => {
+const getGroq = () => {
   if (!groq && process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your-groq-api-key-here') {
-    groq = new Groq({
-      apiKey: process.env.GROQ_API_KEY
-    })
+    groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
   }
   return groq
 }
 
-const MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant'
+// Best free model on Groq as of 2026
+const MODEL = process.env.GROQ_MODEL || 'qwen/qwen3.8-27b'
 
-/**
- * AI-Enhanced Eligibility Analysis
- * Uses Groq AI to provide intelligent eligibility recommendations
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Eligibility Analysis
+// ─────────────────────────────────────────────────────────────────────────────
 export const analyzeEligibilityWithAI = async (userProfile, program, basicResult) => {
-  const client = getGroqClient()
-  
-  if (!client) {
-    console.log('Groq AI not configured, skipping AI enhancement')
-    return basicResult
-  }
-  
+  const client = getGroq()
+  if (!client) return basicResult
+
   try {
-    const prompt = `You are an expert welfare program advisor. Analyze this eligibility check and provide helpful insights.
+    const prompt = `You are an expert advisor on Indian government welfare schemes. Analyze this eligibility check and provide clear, helpful guidance in simple English.
 
 User Profile:
-- Annual Income: $${userProfile.annualIncome}
-- Household Size: ${userProfile.householdSize}
-- Employment Status: ${userProfile.employmentStatus}
-- Age: ${userProfile.age}
+- Annual Income: ₹${(userProfile.annualIncome || 0).toLocaleString('en-IN')}
+- Age: ${userProfile.age || 'Not provided'}
+- Employment: ${userProfile.employmentStatus || 'Not provided'}
+- Category: ${userProfile.category || 'Not provided'}
+- Household Size: ${userProfile.householdSize || 'Not provided'}
 
-Program: ${program.name}
+Scheme: ${program.name}
 Type: ${program.type}
-Agency: ${program.agency}
+Nodal Agency: ${program.agency}
+State: ${program.state || 'All India'}
+Benefits: ${program.benefits?.description || 'As per scheme guidelines'}
 
 Eligibility Criteria:
 ${JSON.stringify(program.eligibilityCriteria, null, 2)}
 
-Basic Eligibility Result:
-- Eligible: ${basicResult.isEligible ? 'Yes' : 'No'}
+Eligibility Result:
+- Eligible: ${basicResult.isEligible ? 'YES' : 'NO'}
 - Score: ${basicResult.score}%
-- Matched: ${basicResult.matchedCriteria.join(', ')}
-- Unmatched: ${basicResult.unmatchedCriteria.join(', ')}
+- Matched criteria: ${basicResult.matchedCriteria.join('; ') || 'None'}
+- Unmatched criteria: ${basicResult.unmatchedCriteria.join('; ') || 'None'}
 
-Please provide:
-1. A clear explanation of why they are/aren't eligible (2-3 sentences)
-2. Specific actionable advice (if not eligible, what can they do?)
-3. Any tips for the application process (if eligible)
-4. Suggest 2-3 similar programs they might qualify for
-
-Format your response as JSON:
+Respond ONLY with valid JSON (no markdown, no extra text):
 {
-  "explanation": "...",
-  "advice": "...",
-  "applicationTips": "...",
-  "similarPrograms": ["program1", "program2"]
+  "explanation": "2-3 sentence explanation of why eligible/not eligible, mention specific criteria",
+  "advice": "Practical next step — what they should do now",
+  "applicationTips": "Specific tip for applying to this Indian government scheme (documents, portal, office to visit)",
+  "similarPrograms": ["Name of similar Indian scheme 1", "Name of similar Indian scheme 2"]
 }`
 
     const completion = await client.chat.completions.create({
+      model: MODEL,
+      temperature: 0.4,
+      max_tokens: 600,
+      response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful welfare program advisor. Provide clear, empathetic, and actionable advice. Always respond in valid JSON format.'
+          content: 'You are CivicAI, an expert on Indian government welfare schemes (PM-JAY, PM-KISAN, PMAY, MGNREGA, NSP, APY, etc.). Always respond with valid JSON only. Use Indian context — ₹ currency, Indian states, Aadhaar, CSC centres, etc.',
         },
-        {
-          role: 'user',
-          content: prompt
-        }
+        { role: 'user', content: prompt },
       ],
-      model: MODEL,
-      temperature: 0.7,
-      max_tokens: 1000,
-      response_format: { type: 'json_object' }
     })
 
-    const aiResponse = JSON.parse(completion.choices[0].message.content)
-    
+    const ai = JSON.parse(completion.choices[0].message.content)
     return {
       ...basicResult,
       aiInsights: {
-        explanation: aiResponse.explanation,
-        advice: aiResponse.advice,
-        applicationTips: aiResponse.applicationTips,
-        similarPrograms: aiResponse.similarPrograms,
-        confidence: completion.choices[0].finish_reason === 'stop' ? 'high' : 'medium'
-      }
+        explanation:     ai.explanation     || '',
+        advice:          ai.advice          || '',
+        applicationTips: ai.applicationTips || '',
+        similarPrograms: ai.similarPrograms || [],
+        confidence:      completion.choices[0].finish_reason === 'stop' ? 'high' : 'medium',
+      },
     }
-  } catch (error) {
-    console.error('AI analysis error:', error)
-    // Return basic result if AI fails
+  } catch (err) {
+    console.error('AI eligibility analysis error:', err.message)
     return {
       ...basicResult,
       aiInsights: {
-        explanation: 'AI analysis unavailable at this time.',
-        advice: 'Please review the eligibility criteria carefully.',
-        applicationTips: 'Contact the program agency for more information.',
+        explanation:     'AI analysis is temporarily unavailable.',
+        advice:          'Please review the eligibility criteria shown above.',
+        applicationTips: 'Visit the official scheme portal or your nearest Common Service Centre (CSC) for assistance.',
         similarPrograms: [],
-        confidence: 'low'
-      }
+        confidence:      'low',
+      },
     }
   }
 }
 
-/**
- * AI-Powered Program Recommendations
- * Suggests programs based on user profile
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Program Recommendations
+// ─────────────────────────────────────────────────────────────────────────────
 export const getAIRecommendations = async (userProfile, allPrograms) => {
-  const client = getGroqClient()
-  
-  if (!client) {
-    return { recommendations: [] }
-  }
-  
+  const client = getGroq()
+  if (!client) return { recommendations: [] }
+
   try {
-    const programsList = allPrograms.map(p => ({
-      name: p.name,
-      type: p.type,
+    // Only send top 50 programs to stay within token limits
+    const programsList = allPrograms.slice(0, 50).map(p => ({
+      name:      p.name,
+      type:      p.type,
+      state:     p.state,
       maxIncome: p.eligibilityCriteria?.maxIncome,
-      minAge: p.eligibilityCriteria?.minAge,
-      maxAge: p.eligibilityCriteria?.maxAge
+      minAge:    p.eligibilityCriteria?.minAge,
+      maxAge:    p.eligibilityCriteria?.maxAge,
+      categories: p.eligibilityCriteria?.allowedCategories?.slice(0, 3),
     }))
 
-    const prompt = `Based on this user profile, recommend the top 3 most suitable welfare programs:
+    const prompt = `Based on this Indian citizen's profile, recommend the 3 most suitable government welfare schemes.
 
 User Profile:
-- Annual Income: $${userProfile.annualIncome}
-- Household Size: ${userProfile.householdSize}
-- Employment Status: ${userProfile.employmentStatus}
+- Annual Income: ₹${(userProfile.annualIncome || 0).toLocaleString('en-IN')}
 - Age: ${userProfile.age}
+- Employment: ${userProfile.employmentStatus}
+- Category: ${userProfile.category || 'General'}
+- Household Size: ${userProfile.householdSize}
+- State: ${userProfile.state || 'Not specified'}
 
-Available Programs:
+Available Schemes (sample):
 ${JSON.stringify(programsList, null, 2)}
 
-Provide recommendations with reasoning. Format as JSON:
+Respond ONLY with valid JSON:
 {
   "recommendations": [
-    {
-      "programName": "...",
-      "matchScore": 85,
-      "reason": "..."
-    }
+    { "programName": "exact name from list", "matchScore": 90, "reason": "one sentence why" },
+    { "programName": "exact name from list", "matchScore": 80, "reason": "one sentence why" },
+    { "programName": "exact name from list", "matchScore": 70, "reason": "one sentence why" }
   ]
 }`
 
     const completion = await client.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a welfare program recommendation expert. Analyze user profiles and suggest the most suitable programs.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
       model: MODEL,
-      temperature: 0.5,
-      max_tokens: 800,
-      response_format: { type: 'json_object' }
+      temperature: 0.3,
+      max_tokens: 500,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'You are an expert on Indian government welfare schemes. Respond with valid JSON only.' },
+        { role: 'user', content: prompt },
+      ],
     })
 
     return JSON.parse(completion.choices[0].message.content)
-  } catch (error) {
-    console.error('AI recommendations error:', error)
+  } catch (err) {
+    console.error('AI recommendations error:', err.message)
     return { recommendations: [] }
   }
 }
 
-/**
- * AI Chat Assistant
- * Answer questions about programs and eligibility
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Chat Assistant
+// ─────────────────────────────────────────────────────────────────────────────
 export const chatWithAI = async (userMessage, context = {}) => {
-  const client = getGroqClient()
-  
+  const client = getGroq()
   if (!client) {
     return {
       response: 'AI assistant is not configured. Please contact support.',
-      error: true
+      error: true,
     }
   }
-  
+
   try {
-    const systemPrompt = `You are CivicAI Assistant, a helpful AI that helps people understand welfare programs and eligibility requirements. 
-    
-You have access to information about these programs: SNAP, Medicaid, Section 8, TANF, WIC, LIHEAP, SSI, and CCDF.
+    const systemPrompt = `You are CivicAI Assistant — a helpful, friendly AI that helps Indian citizens understand government welfare schemes and check their eligibility.
 
-Provide clear, accurate, and empathetic responses. If you don't know something, say so and suggest contacting the program agency.
+You have deep knowledge of Indian government schemes including:
+PM-JAY (Ayushman Bharat), PM-KISAN, PMAY (Urban & Gramin), MGNREGA, PMGKAY, APY (Atal Pension Yojana), PMJJBY, PMSBY, PM SVANidhi, PMKVY, NSP Scholarships, PMJDY (Jan Dhan), Sukanya Samriddhi Yojana, and 3000+ state and central schemes.
 
-${context.userProfile ? `User Profile: Income: $${context.userProfile.annualIncome}, Household: ${context.userProfile.householdSize}, Age: ${context.userProfile.age}` : ''}`
+Guidelines:
+- Always respond in simple, clear English
+- Use ₹ for Indian rupees
+- Mention Aadhaar, CSC centres, official portals when relevant
+- Be empathetic and helpful
+- If unsure, direct to the official myscheme.gov.in portal or 14555 helpline
+${context.userProfile ? `\nUser context: Income ₹${(context.userProfile.annualIncome || 0).toLocaleString('en-IN')}, Age ${context.userProfile.age}, ${context.userProfile.employmentStatus}` : ''}`
 
     const completion = await client.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt
-        },
-        {
-          role: 'user',
-          content: userMessage
-        }
-      ],
       model: MODEL,
-      temperature: 0.7,
-      max_tokens: 500
+      temperature: 0.6,
+      max_tokens: 600,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userMessage },
+      ],
     })
 
     return {
       response: completion.choices[0].message.content,
-      model: MODEL
+      model: MODEL,
     }
-  } catch (error) {
-    console.error('AI chat error:', error)
+  } catch (err) {
+    console.error('AI chat error:', err.message)
     return {
-      response: 'I apologize, but I\'m having trouble processing your request right now. Please try again or contact support.',
-      error: true
+      response: "I'm having trouble right now. Please try again or visit myscheme.gov.in for scheme information.",
+      error: true,
     }
   }
 }
 
-/**
- * Simplify Program Description
- * Make complex program descriptions easier to understand
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Simplify Description
+// ─────────────────────────────────────────────────────────────────────────────
 export const simplifyDescription = async (programDescription) => {
-  const client = getGroqClient()
-  
-  if (!client) {
-    return programDescription
-  }
-  
+  const client = getGroq()
+  if (!client) return programDescription
+
   try {
-    const prompt = `Simplify this welfare program description for easy understanding. Keep it under 100 words and use simple language:
-
-"${programDescription}"
-
-Provide a clear, simple explanation that anyone can understand.`
-
     const completion = await client.chat.completions.create({
+      model: MODEL,
+      temperature: 0.4,
+      max_tokens: 200,
       messages: [
         {
           role: 'system',
-          content: 'You are an expert at explaining complex government programs in simple terms.'
+          content: 'Simplify Indian government scheme descriptions into plain English under 80 words. No jargon.',
         },
         {
           role: 'user',
-          content: prompt
-        }
+          content: `Simplify this in simple English (max 80 words):\n"${programDescription}"`,
+        },
       ],
+    })
+    return completion.choices[0].message.content
+  } catch (err) {
+    console.error('Simplify error:', err.message)
+    return programDescription
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Application Tips
+// ─────────────────────────────────────────────────────────────────────────────
+export const generateApplicationTips = async (program, userProfile) => {
+  const defaultTips = [
+    'Keep your Aadhaar card and bank passbook ready',
+    'Visit your nearest Common Service Centre (CSC) for free application assistance',
+    'Double-check all details before submitting',
+    'Take a printout or screenshot of the acknowledgement',
+    'Follow up at the scheme portal or helpline after 15 days',
+  ]
+
+  const client = getGroq()
+  if (!client) return defaultTips
+
+  try {
+    const prompt = `Give 5 practical tips for applying to this Indian government scheme.
+
+Scheme: ${program.name}
+Type: ${program.type}
+Required Documents: ${program.eligibilityCriteria?.requiredDocuments?.join(', ') || 'Standard KYC documents'}
+Apply at: ${program.applicationProcess?.url || 'Official portal'}
+
+User: Income ₹${(userProfile.annualIncome || 0).toLocaleString('en-IN')}, Age ${userProfile.age}, ${userProfile.employmentStatus}
+
+Respond ONLY with valid JSON: { "tips": ["tip1", "tip2", "tip3", "tip4", "tip5"] }`
+
+    const completion = await client.chat.completions.create({
       model: MODEL,
       temperature: 0.5,
-      max_tokens: 200
-    })
-
-    return completion.choices[0].message.content
-  } catch (error) {
-    console.error('Simplify description error:', error)
-    return programDescription
-  }
-}
-
-/**
- * Generate Application Tips
- * Provide personalized tips for applying to a program
- */
-export const generateApplicationTips = async (program, userProfile) => {
-  const client = getGroqClient()
-  
-  if (!client) {
-    return [
-      'Gather all required documents before starting',
-      'Double-check all information for accuracy',
-      'Keep copies of everything you submit',
-      'Follow up on your application status',
-      'Contact the agency if you have questions'
-    ]
-  }
-  
-  try {
-    const prompt = `Generate 5 specific, actionable tips for applying to this welfare program:
-
-Program: ${program.name}
-Type: ${program.type}
-Required Documents: ${program.eligibilityCriteria?.requiredDocuments?.join(', ') || 'Not specified'}
-
-User Profile:
-- Income: $${userProfile.annualIncome}
-- Household Size: ${userProfile.householdSize}
-- Employment: ${userProfile.employmentStatus}
-
-Provide practical tips that will help them succeed. Format as JSON array:
-{
-  "tips": ["tip1", "tip2", "tip3", "tip4", "tip5"]
-}`
-
-    const completion = await client.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert at helping people successfully apply for welfare programs.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      model: MODEL,
-      temperature: 0.6,
       max_tokens: 400,
-      response_format: { type: 'json_object' }
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'You are an expert on Indian government scheme applications. Respond with JSON only.' },
+        { role: 'user', content: prompt },
+      ],
     })
 
     const result = JSON.parse(completion.choices[0].message.content)
-    return result.tips || []
-  } catch (error) {
-    console.error('Generate tips error:', error)
-    return [
-      'Gather all required documents before starting',
-      'Double-check all information for accuracy',
-      'Keep copies of everything you submit',
-      'Follow up on your application status',
-      'Contact the agency if you have questions'
-    ]
+    return result.tips?.length ? result.tips : defaultTips
+  } catch (err) {
+    console.error('Generate tips error:', err.message)
+    return defaultTips
   }
 }
 
@@ -336,5 +287,5 @@ export default {
   getAIRecommendations,
   chatWithAI,
   simplifyDescription,
-  generateApplicationTips
+  generateApplicationTips,
 }
